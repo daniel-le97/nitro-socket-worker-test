@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        connect-src socket: https: http: blob: ipc: wss: ws: ws://localhost:*;
+         script-src socket: https: http: blob: http://localhost:* 'unsafe-eval' 'unsafe-inline';
+         worker-src socket: https: http: blob: 'unsafe-eval' 'unsafe-inline';
+          frame-src socket: https: http: blob: http://localhost:*;
+            img-src socket: https: http: blob: http://localhost:*;
+          child-src socket: https: http: blob:;
+         object-src 'none';
+      "
+    >
+  <script type="module">
+    setInterval(async() => {
+     const resp =  await navigator.serviceWorker.getRegistrations();
+     const fetched = await fetch('/hello');
+     console.log(resp);
+     console.log(fetched);
+    }, 2000)
+  </script>
+</head>
+<body>
+  Initializing nitro service worker...
+</body>
+</html>
