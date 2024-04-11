@@ -6,4 +6,5 @@ dist
 .output
 .env
 
-build
+build/*
+*/mac/*

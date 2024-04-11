@@ -17,14 +17,18 @@
     >
   <script type="module">
     setInterval(async() => {
-     const resp =  await navigator.serviceWorker.getRegistrations();
-     const fetched = await fetch('/api');
-     console.log(resp);
-     console.log(await fetched.text());
+     const reg =  await navigator.serviceWorker.getRegistrations();
+     const fetched = await fetch('/dogs');
+     const response = await fetched.text();
+     console.log(reg);
+     console.log(response);
+     document.getElementById('app').innerText = response;
     }, 2500)
   </script>
 </head>
 <body>
-  Initializing nitro service worker...
+    <div id="app">
+    Initializing nitro service worker...
+    </div>
 </body>
 </html>

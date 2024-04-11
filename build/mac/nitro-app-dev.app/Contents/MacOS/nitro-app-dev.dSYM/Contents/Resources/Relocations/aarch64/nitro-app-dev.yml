@@ -4,7 +4,7 @@ binary-path:     '/Users/daniel/homelab/GitHub/languages/javascript/nitro-app/bu
 relocations:
   - { offsetInCU: 0x27, offset: 0x27, size: 0x8, addend: 0x0, symName: __ZN3SSC14isDebugEnabledEv, symObjAddr: 0x0, symBinAddr: 0x100023460, symSize: 0xC }
   - { offsetInCU: 0x4C, offset: 0x4C, size: 0x8, addend: 0x0, symName: __ZN3SSC10getDevHostEv, symObjAddr: 0x124, symBinAddr: 0x100023584, symSize: 0xD4 }
-  - { offsetInCU: 0x75, offset: 0x75, size: 0x8, addend: 0x0, symName: __ZZN3SSC10getDevHostEvE4host, symObjAddr: 0x210E8, symBinAddr: 0x1001BD780, symSize: 0x0 }
+  - { offsetInCU: 0x75, offset: 0x75, size: 0x8, addend: 0x0, symName: __ZZN3SSC10getDevHostEvE4host, symObjAddr: 0x210E0, symBinAddr: 0x1001BD780, symSize: 0x0 }
   - { offsetInCU: 0x95, offset: 0x95, size: 0x8, addend: 0x0, symName: __ZN3SSC14isDebugEnabledEv, symObjAddr: 0x0, symBinAddr: 0x100023460, symSize: 0xC }
   - { offsetInCU: 0xB2, offset: 0xB2, size: 0x8, addend: 0x0, symName: __ZN3SSC13getUserConfigEv, symObjAddr: 0xC, symBinAddr: 0x10002346C, symSize: 0xDC }
   - { offsetInCU: 0xDF, offset: 0xDF, size: 0x8, addend: 0x0, symName: __ZN3SSC10getDevPortEv, symObjAddr: 0x22C, symBinAddr: 0x10002368C, symSize: 0x8 }

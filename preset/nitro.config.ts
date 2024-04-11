@@ -24,15 +24,19 @@ const htmlTemplate = (baseURL = "/") => `<!DOCTYPE html>
     >
   <script type="module">
     setInterval(async() => {
-     const resp =  await navigator.serviceWorker.getRegistrations();
-     const fetched = await fetch('/api');
-     console.log(resp);
-     console.log(await fetched.text());
+     const reg =  await navigator.serviceWorker.getRegistrations();
+     const fetched = await fetch('/dogs');
+     const response = await fetched.text();
+     console.log(reg);
+     console.log(response);
+     document.getElementById('app').innerText = response;
     }, 2500)
   </script>
 </head>
 <body>
-  Initializing nitro service worker...
+    <div id="app">
+    Initializing nitro service worker...
+    </div>
 </body>
 </html>`;
 
@@ -98,29 +102,29 @@ export default <NitroPreset>{
 
       // await fsp.writeFile(resolve(nitro.options.output.publicDir, "/server/index.mjs"), output.replace('globalThis._importMeta_={url:"file:///_entry.js",env:{}};', ''), "utf8");
       // Write sw.js file
-      // await fsp.writeFile(
-      //   resolve(nitro.options.output.publicDir, "sw.js"),
-      //   `self.importScripts('${joinURL(
-      //     nitro.options.baseURL,
-      //     "server/index.mjs"
-      //   )}');`,
-      //   "utf8"
-      // );
       await fsp.writeFile(
         resolve(nitro.options.output.publicDir, "sw.js"),
-        `onactivate = (event) => {
-          globalThis.clients.claim()
-        }
-        
-        oninstall = (event) => {
-          globalThis.skipWaiting()
-        }
-        
-        onfetch = (event) => {
-          event.respondWith(fetch('/icon.png'))
-        }`,
+        `self.importScripts('${joinURL(
+          nitro.options.baseURL,
+          "server/index.mjs"
+        )}');`,
         "utf8"
       );
+      // await fsp.writeFile(
+      //   resolve(nitro.options.output.publicDir, "sw.js"),
+      //   `onactivate = (event) => {
+      //     globalThis.clients.claim()
+      //   }
+        
+      //   oninstall = (event) => {
+      //     globalThis.skipWaiting()
+      //   }
+        
+      //   onfetch = (event) => {
+      //     event.respondWith(fetch('/icon.png'))
+      //   }`,
+      //   "utf8"
+      // );
 
       // await fsp.writeFile(
       //   resolve(nitro.options.output.publicDir, "sw.js"),
