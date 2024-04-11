@@ -1,3 +1,4 @@
+/* global XMLHttpRequest */
 /**
  * A container for a database lookup query.
  */
@@ -90,14 +91,60 @@ export class Database {
   }
 
   /**
+   * Loads database MIME entries synchronously into internal map.
+   */
+  loadSync () {
+    if (this.map.size === 0) {
+      const request = new XMLHttpRequest()
+
+      request.open('GET', this.url, false)
+      request.send(null)
+
+      let responseText = null
+
+      try {
+        // @ts-ignore
+        responseText = request.responseText // can throw `InvalidStateError` error
+      } catch {
+        responseText = request.response
+      }
+
+      const json = JSON.parse(responseText)
+
+      for (const [key, value] of Object.entries(json)) {
+        this.map.set(key, value)
+        this.index.set(value.toLowerCase(), key.toLowerCase())
+      }
+    }
+  }
+
+  /**
    * Lookup MIME type by name or content type
    * @param {string} query
-   * @return {Promise<DatabaseQueryResult>}
+   * @return {Promise<DatabaseQueryResult[]>}
    */
   async lookup (query) {
-    query = query.toLowerCase()
-
     await this.load()
+    return this.query(query)
+  }
+
+  /**
+   * Lookup MIME type by name or content type synchronously.
+   * @param {string} query
+   * @return {Promise<DatabaseQueryResult[]>}
+   */
+  lookupSync (query) {
+    this.loadSync()
+    return this.query(query)
+  }
+
+  /**
+   * Queries database map and returns an array of results
+   * @param {string} query
+   * @return {DatabaseQueryResult[]}
+   */
+  query (query) {
+    query = query.toLowerCase()
 
     const queryParts = query.split('+')
     const results = []
@@ -215,7 +262,7 @@ export const databases = [
 export async function lookup (query) {
   const results = []
 
-  // preload all databasees
+  // preload all databases
   await Promise.all(databases.map((db) => db.load()))
 
   for (const database of databases) {
@@ -226,11 +273,109 @@ export async function lookup (query) {
   return results
 }
 
+/**
+ * Look up a MIME type in various MIME databases synchronously.
+ * @param {string} query
+ * @return {DatabaseQueryResult[]}
+ */
+export async function lookupSync (query) {
+  const results = []
+
+  for (const database of databases) {
+    const result = database.lookupSync(query)
+    results.push(...result)
+  }
+
+  return results
+}
+
+export class MIMEParams extends Map {
+  toString () {
+    return Array
+      .from(this.entries())
+      .map((entry) => entry.join('='))
+      .join(';')
+  }
+}
+
+export class MIMEType {
+  #type = null
+  #params = null
+  #subtype = null
+
+  constructor (input) {
+    input = String(input)
+
+    const args = input.split(';')
+    const mime = args.shift()
+    const types = mime.split('/')
+
+    if (types.length !== 2 || !types[0] || !types[1]) {
+      throw new TypeError(`Invalid MIMEType input given: ${mime}`)
+    }
+
+    const [type, subtype] = types
+
+    this.#type = type.toLowerCase()
+    this.#params = new MIMEParams(args.map((a) => a.trim().split('=').map((v) => v.trim())))
+    this.#subtype = subtype
+  }
+
+  get type () {
+    return this.#type
+  }
+
+  set type (value) {
+    if (!value || typeof value !== 'string') {
+      throw new TypeError('MIMEType type must be a string')
+    }
+
+    this.#type = value
+  }
+
+  get subtype () {
+    return this.#subtype
+  }
+
+  set subtype (value) {
+    if (!value || typeof value !== 'string') {
+      throw new TypeError('MIMEType subtype must be a string')
+    }
+
+    this.#subtype = value
+  }
+
+  get essence () {
+    return `${this.type}/${this.subtype}`
+  }
+
+  get params () {
+    return this.#params
+  }
+
+  toString () {
+    const params = this.params.toString()
+
+    if (params) {
+      return `${this.essence};${params}`
+    }
+
+    return this.essence
+  }
+
+  toJSON () {
+    return this.toString()
+  }
+}
+
 export default {
   // API
   Database,
   databases,
   lookup,
+  lookupSync,
+  MIMEParams,
+  MIMEType,
 
   // databases
   application,

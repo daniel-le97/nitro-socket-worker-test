@@ -1,19 +1,17 @@
 import { IllegalConstructorError } from './errors.js'
 import { Buffer } from './buffer.js'
 import { URL } from './url.js'
+import types from './util/types.js'
+import mime from './mime.js'
 
 import * as exports from './util.js'
 
+export { types }
+
+const TypedArrayPrototype = Object.getPrototypeOf(Uint8Array.prototype)
 const ObjectPrototype = Object.prototype
-const Uint8ArrayPrototype = Uint8Array.prototype
-const TypedArrayPrototype = Object.getPrototypeOf(Uint8ArrayPrototype)
 
-const AsyncFunction = (async () => {}).constructor
-const TypedArray = TypedArrayPrototype.constructor
-
-const kSocketCustomInspect = inspect.custom = Symbol.for('socket.util.inspect.custom')
-const kNodeCustomInspect = inspect.custom = Symbol.for('nodejs.util.inspect.custom')
-const kIgnoreInspect = inspect.ignore = Symbol.for('socket.util.inspect.ignore')
+const kIgnoreInspect = inspect.ignore = Symbol.for('socket.runtime.util.inspect.ignore')
 
 function maybeURL (...args) {
   try {
@@ -23,19 +21,91 @@ function maybeURL (...args) {
   }
 }
 
+export const TextDecoder = globalThis.TextDecoder
+export const TextEncoder = globalThis.TextEncoder
+export const isArray = Array.isArray.bind(Array)
+
+export const inspectSymbols = [
+  Symbol.for('socket.runtime.util.inspect.custom'),
+  Symbol.for('nodejs.util.inspect.custom')
+]
+
+inspect.custom = inspectSymbols[0]
+
+export function debug (section) {
+  let enabled = false
+  const env = globalThis.__args?.env ?? {}
+  const sections = [].concat(
+    (env.SOCKET_DEBUG ?? '').split(','),
+    (env.NODE_DEBUG ?? '').split(',')
+  ).map((section) => section.trim())
+
+  if (section && sections.includes(section)) {
+    enabled = true
+  }
+
+  function logger (...args) {
+    if (enabled) {
+      return console.debug(...args)
+    }
+  }
+
+  Object.defineProperty(logger, 'enabled', {
+    configurable: false,
+    enumerable: false,
+    get: () => enabled,
+    set: (value) => {
+      if (value === true) {
+        enabled = true
+      } else if (value === false) {
+        enabled = false
+      }
+    }
+  })
+
+  return logger
+}
+
 export function hasOwnProperty (object, property) {
   return ObjectPrototype.hasOwnProperty.call(object, String(property))
 }
 
-export function isTypedArray (object) {
-  return object instanceof TypedArray
+export function isDate (object) {
+  return types.isDate(object)
 }
 
-export function isArrayLike (object) {
+export function isTypedArray (object) {
+  return types.isTypedArray(object)
+}
+
+export function isArrayLike (input) {
   return (
-    (Array.isArray(object) || isTypedArray(object)) &&
-    object !== TypedArrayPrototype &&
-    object !== Buffer.prototype
+    (Array.isArray(input) || isTypedArray(input)) &&
+    input !== TypedArrayPrototype &&
+    input !== Buffer.prototype
+  )
+}
+
+export function isError (object) {
+  return types.isNativeError(object) || object instanceof globalThis.Error
+}
+
+export function isSymbol (value) {
+  return typeof value === 'symbol'
+}
+
+export function isNumber (value) {
+  return !isUndefined(value) && !isNull(value) && (
+    typeof value === 'number' ||
+    value instanceof Number
+  )
+}
+
+export function isBoolean (value) {
+  return !isUndefined(value) && !isNull(value) && (
+    value === true ||
+    value === false ||
+    value instanceof Boolean
   )
 }
 
@@ -44,11 +114,11 @@ export function isArrayBufferView (buf) {
 }
 
 export function isAsyncFunction (object) {
-  return object instanceof AsyncFunction
+  return types.isAsyncFunction(object)
 }
 
 export function isArgumentsObject (object) {
-  return isPlainObject(object)
+  return types.isArgumentsObject(object)
 }
 
 export function isEmptyObject (object) {
@@ -66,12 +136,34 @@ export function isObject (object) {
   )
 }
 
-export function isPlainObject (object) {
+export function isUndefined (value) {
+  return value === undefined
+}
+
+export function isNull (value) {
+  return value === null
+}
+
+export function isNullOrUndefined (value) {
+  return isNull(value) || isUndefined(value)
+}
+
+export function isPrimitive (value) {
   return (
-    object !== null &&
-    typeof object === 'object' &&
-    Object.getPrototypeOf(object) === Object.prototype
+    isNullOrUndefined(value) ||
+    typeof value === 'number' ||
+    typeof value === 'string' ||
+    typeof value === 'symbol' ||
+    typeof value === 'boolean'
   )
+}
+
+export function isRegExp (value) {
+  return value && value instanceof RegExp
+}
+
+export function isPlainObject (object) {
+  return types.isPlainObject(object)
 }
 
 export function isArrayBuffer (object) {
@@ -102,6 +194,10 @@ export function isClass (value) {
   )
 }
 
+export function isBuffer (value) {
+  return Buffer.isBuffer(value)
+}
+
 export function isPromiseLike (object) {
   return isFunction(object?.then)
 }
@@ -123,6 +219,7 @@ export function toBuffer (object, encoding = undefined) {
 }
 
 export function toProperCase (string) {
+  if (!string) return ''
   return string[0].toUpperCase() + string.slice(1)
 }
 
@@ -144,6 +241,11 @@ export function splitBuffer (buffer, highWaterMark) {
 }
 
 export function InvertedPromise () {
+  console.warn(
+    '\'InvertedPromise\' is deprecated.' +
+    'Please use \'Deferred\' from \'socket:async\''
+  )
+
   const context = {}
   const promise = new Promise((resolve, reject) => {
     Object.assign(context, {
@@ -200,7 +302,12 @@ export function promisify (original) {
     }
 
     for (const key in original) {
-      object[key] = promisify(original[key])
+      const value = original[key]
+      if (typeof value === 'function' || (value && typeof value === 'object')) {
+        object[key] = promisify(original[key].bind(original))
+      } else {
+        object[key] = original[key]
+      }
     }
 
     Object.defineProperty(object, promisify.custom, {
@@ -275,12 +382,21 @@ export function inspect (value, options) {
     ),
 
     ...options,
-    options
+    options: {
+      stylize (label, style) {
+        return label
+      },
+      ...options
+    }
   }
 
   return formatValue(ctx, value, ctx.depth)
 
   function formatValue (ctx, value, depth) {
+    if (value instanceof Symbol || typeof value === 'symbol') {
+      return String(value)
+    }
+
     // nodejs `value.inspect()` parity
     if (
       ctx.customInspect &&
@@ -301,28 +417,22 @@ export function inspect (value, options) {
         }
 
         return formatted
-      } else if (
-        (
-          isFunction(value?.[kNodeCustomInspect]) &&
-          value?.[kNodeCustomInspect] !== inspect
-        ) ||
-        (
-          isFunction(value?.[kSocketCustomInspect]) &&
-          value?.[kSocketCustomInspect] !== inspect
-        )
-      ) {
-        const formatted = (value[kNodeCustomInspect] || value[kSocketCustomInspect]).call(
-          value,
-          depth,
-          ctx.options,
-          inspect
-        )
+      } else if (value) {
+        for (const inspectSymbol of inspectSymbols) {
+          if (isFunction(value[inspectSymbol]) && value[inspectSymbol] !== inspect) {
+            const formatted = value[inspectSymbol](
+              depth,
+              ctx.options,
+              inspect
+            )
 
-        if (typeof formatted !== 'string') {
-          return formatValue(ctx, formatted, depth)
+            if (typeof formatted !== 'string') {
+              return formatValue(ctx, formatted, depth)
+            }
+
+            return formatted
+          }
         }
-
-        return formatted
       }
     }
 
@@ -364,15 +474,24 @@ export function inspect (value, options) {
     const braces = ['{', '}']
     const isArrayLikeValue = isArrayLike(value)
 
-    if (value instanceof Map) {
-      braces[0] = `Map(${value.size}) ${braces[0]}`
-    } else if (value instanceof Set) {
-      braces[0] = `Set(${value.size}) ${braces[0]}`
+    try {
+      if (value instanceof MIMEParams) {
+        braces[0] = `MIMEParams(${value.size}) ${braces[0]}`
+      } else if (value instanceof Map) {
+        braces[0] = `Map(${value.size}) ${braces[0]}`
+      } else if (value instanceof Set) {
+        braces[0] = `Set(${value.size}) ${braces[0]}`
+      }
+    } catch {
+      braces.splice(0, braces.length)
     }
 
-    const keys = value instanceof Map
-      ? Array.from(value.keys())
-      : new Set(Object.keys(value))
+    let keys = []
+    try {
+      keys = value instanceof Map
+        ? Array.from(value.keys())
+        : new Set(Object.keys(value))
+    } catch {}
 
     const enumerableKeys = value instanceof Set
       ? Array(value.size).fill(0).map((_, i) => i)
@@ -382,7 +501,9 @@ export function inspect (value, options) {
       try {
         const hidden = Object.getOwnPropertyNames(value)
         for (const key of hidden) {
-          keys.add(key)
+          if (value instanceof Error && !/stack|message|name/.test(key)) {
+            keys.add(key)
+          }
         }
       } catch (err) {}
     }
@@ -423,6 +544,26 @@ export function inspect (value, options) {
         enumerableKeys.code = true
         keys.add('code')
       }
+    }
+
+    if (isArgumentsObject(value)) {
+      typename = 'Arguments'
+      braces[0] = '{'
+      braces[1] = '}'
+    } else if (types.isSetIterator(value)) {
+      typename = 'Set Iterator'
+    } else if (types.isMapIterator(value)) {
+      typename = 'Map Iterator'
+    } else if (types.isIterator(value)) {
+      typename = 'Iterator'
+    } else if (types.isAsyncIterator(value)) {
+      typename = 'AsyncIterator'
+    } else if (types.isGeneratorFunction(value)) {
+      typename = 'GeneratorFunction'
+    } else if (types.isGeneratorObject(value)) {
+      typename = 'Generator'
+    } else if (types.isAsyncGeneratorFunction(value)) {
+      typename = 'AsyncGeneratorFunction'
     }
 
     if (!(value instanceof Map || value instanceof Set)) {
@@ -467,12 +608,15 @@ export function inspect (value, options) {
 
     const output = []
 
-    if (isArrayLikeValue || value instanceof Set) {
+    if (!isArgumentsObject(value) && (isArrayLikeValue || value instanceof Set)) {
       // const items = isArrayLikeValue ? value : Array.from(value.values())
       const size = isArrayLikeValue ? value.length : value.size
       for (let i = 0; i < size; ++i) {
         const key = String(i)
         if (value instanceof Set || hasOwnProperty(value, key)) {
+          if (key === 'length' && Array.isArray(value)) {
+            continue
+          }
           output.push(formatProperty(
             ctx,
             value,
@@ -485,15 +629,34 @@ export function inspect (value, options) {
       }
 
       for (const key of keys) {
-        if (!/^\d+$/.test(key)) {
-          output.push(...Array.from(keys).map((key) => formatProperty(
+        if (!/^\d+$/.test(key) && key !== 'length') {
+          output.push(formatProperty(
             ctx,
             value,
             depth,
             enumerableKeys,
             key,
             true
-          )))
+          ))
+        }
+      }
+    } else if (typeof value === 'function') {
+      for (const key of keys) {
+        if (
+          !/^\d+$/.test(key) &&
+          key !== 'name' &&
+          key !== 'length' &&
+          key !== 'prototype' &&
+          key !== 'constructor'
+        ) {
+          output.push(formatProperty(
+            ctx,
+            value,
+            depth,
+            enumerableKeys,
+            key,
+            false
+          ))
         }
       }
     } else {
@@ -517,9 +680,14 @@ export function inspect (value, options) {
       }
 
       const formatWebkitErrorStackLine = (line) => {
-        const [symbol = '', location = ''] = line.split('@')
-        const output = []
-        const root = new URL('../', import.meta.url).pathname
+        const [symbol = '', location = ''] = line.endsWith('@')
+          ? [line.slice(0, -1)]
+          : line.startsWith('@')
+            ? ['', line.slice(1)]
+            : line.split('@')
+
+        let output = []
+        const root = new URL('../', import.meta.url || globalThis.location.href).pathname
 
         let [context, lineno, colno] = (
           maybeURL(location)?.pathname?.split(/:/) ||
@@ -544,11 +712,16 @@ export function inspect (value, options) {
           output.push(`(${context}:${lineno})`)
         } else if (context) {
           output.push(`${context}`)
+        } else if (!symbol) {
+          output.push('<anonymous>')
         }
+
+        output = output.filter(Boolean)
 
         if (output.length) {
           output.unshift('    at')
         }
+
         return output.filter(Boolean).join(' ')
       }
 
@@ -796,10 +969,11 @@ export function parseHeaders (headers) {
   }
 
   return headers
-    .split('\n')
+    .split(/\r?\n/)
     .map((l) => l.trim().split(':'))
-    .filter((e) => e.length === 2)
-    .map((e) => [e[0].trim().toLowerCase(), e[1].trim().toLowerCase()])
+    .filter((e) => e.length >= 2)
+    .map((e) => [e[0].trim().toLowerCase(), e.slice(1).join(':').trim().toLowerCase()])
+    .filter((e) => e[0].length && e[1].length)
 }
 
 export function noop () {}
@@ -819,5 +993,23 @@ export function isValidPercentageValue (input) {
 export function compareBuffers (a, b) {
   return toBuffer(a).compare(toBuffer(b))
 }
+
+export function inherits (Constructor, Super) {
+  Object.defineProperty(Constructor, 'super_', {
+    configurable: true,
+    writable: true,
+    value: Super,
+    __proto__: null
+  })
+
+  Object.setPrototypeOf(Constructor.prototype, Super.prototype)
+}
+
+export function deprecate (...args) {
+  // noop
+}
+
+export const MIMEType = mime.MIMEType
+export const MIMEParams = mime.MIMEParams
 
 export default exports

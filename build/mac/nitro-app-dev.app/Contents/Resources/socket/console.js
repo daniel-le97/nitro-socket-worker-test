@@ -1,8 +1,9 @@
 import { format, isObject } from './util.js'
 import { postMessage } from './ipc.js'
+import os from './os.js'
 
 function isPatched (console) {
-  return console?.[Symbol.for('socket.console.patched')] === true
+  return console?.[Symbol.for('socket.runtime.console.patched')] === true
 }
 
 function table (data, columns, formatValues = true) {
@@ -132,13 +133,73 @@ export class Console {
         configurable: false
       }
     })
+
+    this.write = this.write.bind(this)
+    this.assert = this.assert.bind(this)
+    this.clear = this.clear.bind(this)
+    this.count = this.count.bind(this)
+    this.countReset = this.countReset.bind(this)
+    this.debug = this.debug.bind(this)
+    this.dir = this.dir.bind(this)
+    this.dirxml = this.dirxml.bind(this)
+    this.error = this.error.bind(this)
+    this.info = this.info.bind(this)
+    this.log = this.log.bind(this)
+    this.table = this.table.bind(this)
+    this.time = this.time.bind(this)
+    this.timeEnd = this.timeEnd.bind(this)
+    this.timeLog = this.timeLog.bind(this)
+    this.trace = this.trace.bind(this)
+    this.warn = this.warn.bind(this)
   }
 
-  async write (destination, ...args) {
-    const value = encodeURIComponent(format(...args))
-    const uri = `ipc://${destination}?value=${value}`
+  write (destination, ...args) {
+    let extra = ''
+    let value = ''
+
+    value = format(...args)
+    if (destination === 'debug') {
+      destination = 'stderr'
+      extra = 'debug=true'
+      if (globalThis.location && !globalThis.window) {
+        value = `[${globalThis.name || globalThis.location.pathname}]: ${value}`
+      } else {
+        value = `[${globalThis.location.pathname}]: ${value}`
+      }
+    }
+
+    if (/ios|darwin/i.test(os.platform())) {
+      const parts = value.split('\n')
+      const pending = []
+      for (const part of parts) {
+        if (part.length > 256) {
+          for (let i = 0; i < part.length; i += 256) {
+            pending.push(part.slice(i, i + 256))
+          }
+        } else {
+          pending.push(part)
+        }
+
+        while (pending.length) {
+          const output = pending.shift()
+          try {
+            const value = encodeURIComponent(output)
+            const uri = `ipc://${destination}?value=${value}&${extra}&resolve=false`
+            this.postMessage?.(uri)
+          } catch (err) {
+            this.console?.warn?.(`Failed to write to ${destination}: ${err.message}`)
+            return
+          }
+        }
+      }
+      return
+    }
+
+    value = encodeURIComponent(value)
+    const uri = `ipc://${destination}?value=${value}&${extra}&resolve=false`
+
     try {
-      return await this.postMessage?.(uri)
+      return this.postMessage?.(uri)
     } catch (err) {
       this.console?.warn?.(`Failed to write to ${destination}: ${err.message}`)
     }
@@ -175,7 +236,7 @@ export class Console {
   debug (...args) {
     this.console?.debug?.(...args)
     if (!isPatched(this.console)) {
-      this.write('stderr', ...args)
+      this.write('debug', ...args)
     }
   }
 
@@ -351,7 +412,7 @@ export function patchGlobalConsole (globalConsole, options = {}) {
       ...options
     })
 
-    globalConsole[Symbol.for('socket.console.patched')] = true
+    globalConsole[Symbol.for('socket.runtime.console.patched')] = true
 
     for (const key in globalConsole) {
       if (typeof Console.prototype[key] === 'function') {
@@ -369,7 +430,10 @@ export function patchGlobalConsole (globalConsole, options = {}) {
   return globalConsole
 }
 
-export default new Console({
+export default Object.assign(new Console({
   postMessage,
   console: patchGlobalConsole(globalConsole)
+}), {
+  Console,
+  globalConsole
 })

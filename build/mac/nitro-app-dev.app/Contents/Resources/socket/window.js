@@ -13,6 +13,8 @@ import { isValidPercentageValue } from './util.js'
 import * as statuses from './window/constants.js'
 import location from './location.js'
 import { URL } from './url.js'
+import hotkey from './window/hotkey.js'
+import menu from './application/menu.js'
 import ipc from './ipc.js'
 
 /**
@@ -30,17 +32,22 @@ export function formatURL (url) {
  * Represents a window in the application
  */
 export class ApplicationWindow {
+  #id = null
   #index
   #options
+  #channel = null
   #senderWindowIndex = globalThis.__args.index
   #listeners = {}
   // TODO(@chicoxyzzy): add parent and children? (needs native process support)
 
   static constants = statuses
+  static hotkey = hotkey
 
   constructor ({ index, ...options }) {
+    this.#id = options?.id
     this.#index = index
     this.#options = options
+    this.#channel = new BroadcastChannel(`socket.runtime.window.${this.#index}`)
   }
 
   #updateOptions (response) {
@@ -48,9 +55,18 @@ export class ApplicationWindow {
     if (err) {
       throw new Error(err)
     }
-    const { index, ...options } = data
+    const { id, index, ...options } = data
+    this.#id = id ?? null
     this.#options = options
     return data
+  }
+
+  /**
+   * The unique ID of this window.
+   * @type {string}
+   */
+  get id () {
+    return this.#id
   }
 
   /**
@@ -59,6 +75,21 @@ export class ApplicationWindow {
    */
   get index () {
     return this.#index
+  }
+
+  /**
+   * @type {import('./window/hotkey.js').default}
+   */
+  get hotkey () {
+    return hotkey
+  }
+
+  /**
+   * The broadcast channel for this window.
+   * @type {BroadcastChannel}
+   */
+  get channel () {
+    return this.#channel
   }
 
   /**
@@ -118,6 +149,33 @@ export class ApplicationWindow {
    */
   async hide () {
     const response = await ipc.send('window.hide', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    return this.#updateOptions(response)
+  }
+
+  /**
+   * Maximize the window
+   * @return {Promise<ipc.Result>}
+   */
+  async maximize () {
+    const response = await ipc.send('window.maximize', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    return this.#updateOptions(response)
+  }
+
+  /**
+   * Minimize the window
+   * @return {Promise<ipc.Result>}
+   */
+  async minimize () {
+    const response = await ipc.send('window.minimize', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+    return this.#updateOptions(response)
+  }
+
+  /**
+   * Restore the window
+   * @return {Promise<ipc.Result>}
+   */
+  async restore () {
+    const response = await ipc.send('window.restore', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     return this.#updateOptions(response)
   }
 
@@ -211,20 +269,20 @@ export class ApplicationWindow {
   }
 
   /**
+   * Gets the background color of the window
+   * @return {Promise<object>}
+   */
+  async getBackgroundColor () {
+    return await ipc.send('window.getBackgroundColor', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
+  }
+
+  /**
    * Opens a native context menu.
    * @param {object} options - an options object
    * @return {Promise<object>}
    */
   async setContextMenu (options) {
-    const o = Object
-      .entries(options)
-      .flatMap(a => a.join(':'))
-      .join('_')
-    const { data, err } = await ipc.send('window.setContextMenu', o)
-    if (err) {
-      throw err
-    }
-    return data
+    return await menu.context.set(options)
   }
 
   /**
@@ -297,12 +355,15 @@ export class ApplicationWindow {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.send can only be used from the current window')
     }
+
     if (!Number.isInteger(options.window) && options.backend !== true) {
       throw new Error('window should be an integer')
     }
+
     if (options.backend === true && options.window != null) {
       throw new Error('backend option cannot be used together with window option')
     }
+
     if (typeof options.event !== 'string' || options.event.length === 0) {
       throw new Error('event should be a non-empty string')
     }
@@ -326,12 +387,40 @@ export class ApplicationWindow {
   }
 
   /**
+   * Post a message to a window
+   * TODO(@jwerle): research using `BroadcastChannel` instead
+   * @param {object} message
+   * @return {Promise}
+   */
+  async postMessage (message) {
+    if (this.#index === this.#senderWindowIndex) {
+      globalThis.dispatchEvent(new MessageEvent('message', message))
+    } else {
+      return await ipc.send('window.send', {
+        index: this.#senderWindowIndex,
+        targetWindowIndex: this.#index,
+        event: 'message',
+        value: encodeURIComponent(message.data)
+      })
+    }
+  }
+
+  /**
    * Opens an URL in the default browser.
    * @param {object} options
    * @returns {Promise<ipc.Result>}
    */
   async openExternal (options) {
-    return await ipc.send('platform.openExternal', options)
+    return await ipc.request('platform.openExternal', options)
+  }
+
+  /**
+   * Opens a file in the default file explorer.
+   * @param {object} options
+   * @returns {Promise<ipc.Result>}
+   */
+  async revealFile (options) {
+    return await ipc.send('platform.revealFile', options)
   }
 
   // public EventEmitter methods
@@ -430,7 +519,10 @@ export class ApplicationWindow {
   }
 }
 
+export { hotkey }
+
 export default ApplicationWindow
+
 /**
  * @ignore
  */

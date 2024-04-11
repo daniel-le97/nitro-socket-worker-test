@@ -6,20 +6,23 @@
  * import { Path } from 'socket:path'
  * ```
  */
+import { resolve as resolveURL, URL, URLPattern } from '../url.js'
 import location from '../location.js'
-import {
-  resolve as resolveURL,
-  parse as parseURL,
-  URL,
-  URLPattern
-} from '../url.js'
 
 const windowsDriveRegex = /^[a-z]:/i
 const windowsDriveAndSlashesRegex = /^([a-z]:(\\|\/\/))/i
 const windowsDriveInPathRegex = /^\/[a-z]:/i
 
-function maybeURL (uri, baseURL) {
+function maybeURL (uri, baseURL = undefined) {
   let url = null
+
+  if (typeof baseURL === 'string' && baseURL.startsWith('blob:')) {
+    baseURL = new URL(baseURL).pathname
+  }
+
+  if (typeof uri === 'string' && uri.startsWith('blob:')) {
+    uri = new URL(uri).pathname
+  }
 
   try {
     baseURL = new URL(baseURL)
@@ -46,6 +49,10 @@ export function resolve (options, ...components) {
 
     if (component.length > 1) {
       component = component.replace(/\/$/g, '')
+    }
+
+    if (component.startsWith('blob:')) {
+      component = maybeURL(component)
     }
 
     resolved = resolveURL(resolved + '/', component)
@@ -158,30 +165,28 @@ export function join (options, ...components) {
   const { sep } = options
   const queries = []
   const resolved = []
-  let protocol = null
+  const isAbsolute = (
+    URL.canParse(components[0]) ||
+    components[0].trim().startsWith(sep)
+  )
 
-  const isAbsolute = components[0].trim().startsWith(sep)
+  let url = null
 
   while (components.length) {
-    let component = String(components.shift() || '')
-    const url = parseURL(component) || component
+    const component = components.shift()
 
-    if (url.protocol) {
-      if (!protocol) {
-        protocol = url.protocol
-      }
-
-      component = url.pathname
-    }
-
-    const parts = component.split(sep).filter(Boolean)
-    while (parts.length) {
-      queries.push(parts.shift())
+    if (!url && URL.canParse(component)) {
+      url = new URL(component)
+      queries.push(...url.pathname.split('/'))
+    } else {
+      queries.push(...String(component).split('/'))
     }
   }
 
   for (const query of queries) {
-    if (query === '..' && resolved.length > 1 && resolved[0] !== '..') {
+    if (!query) {
+      continue
+    } else if (query === '..' && resolved.length > 1 && resolved[0] !== '..') {
       resolved.pop()
     } else if (query !== '.') {
       if (query.startsWith(sep)) {
@@ -196,9 +201,15 @@ export function join (options, ...components) {
 
   const joined = resolved.join(sep)
 
-  return isAbsolute
-    ? sep + joined
-    : joined
+  if (url) {
+    return new URL(joined, url.origin).href
+  }
+
+  if (isAbsolute) {
+    return sep + joined
+  }
+
+  return joined
 }
 
 /**
@@ -208,6 +219,12 @@ export function join (options, ...components) {
  * @return {string}
  */
 export function dirname (options, path) {
+  if (typeof path !== 'string') {
+    throw Object.assign(new Error(`The "path" argument must be of type string. Received: ${path}`), {
+      code: 'ERR_INVALID_ARG_TYPE'
+    })
+  }
+
   if (windowsDriveInPathRegex.test(path)) {
     path = path.slice(1)
   }
@@ -397,14 +414,14 @@ export class Path {
 
     if (cwd) {
       cwd = cwd.replace(/\\/g, '/')
-      cwd = new URL(`file://${cwd.replace('file://', '')}`)
+      cwd = maybeURL(`file://${cwd.replace('file://', '')}`)
     } else if (pathname.startsWith('..')) {
       pathname = pathname.slice(2)
       cwd = 'file:///..'
     } else if (isRelative) {
-      cwd = new URL('file:///.')
+      cwd = maybeURL('file:///.')
     } else {
-      cwd = new URL(`file://${Path.cwd()}`)
+      cwd = maybeURL(`file://${Path.cwd()}`)
     }
 
     if (cwd === 'socket:/') {
@@ -420,7 +437,7 @@ export class Path {
       this.#hasProtocol = Boolean(this.pattern.protocol)
     } catch {}
 
-    this.url = new URL(pathname, cwd)
+    this.url = maybeURL(pathname, cwd)
 
     const [drive] = (
       pathname.match(windowsDriveRegex) ||
@@ -435,6 +452,10 @@ export class Path {
   }
 
   get pathname () {
+    if (!this.url) {
+      return null
+    }
+
     let { pathname } = this.url
 
     if (this.#leadingDot || this.isRelative) {
@@ -449,11 +470,11 @@ export class Path {
   }
 
   get protocol () {
-    return this.url.protocol
+    return this.url?.protocol
   }
 
   get href () {
-    return this.url.href
+    return this.url?.href
   }
 
   /**
@@ -632,7 +653,7 @@ export class Path {
    * @return {URL}
    */
   toURL () {
-    return new URL(this.href.replace(/\\/g, '/'))
+    return maybeURL(this.href.replace(/\\/g, '/'))
   }
 
   /**

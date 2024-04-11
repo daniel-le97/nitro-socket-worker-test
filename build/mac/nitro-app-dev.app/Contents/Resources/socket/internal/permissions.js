@@ -33,8 +33,8 @@ const isLinux = os.platform() === 'linux'
  * @return {function}
  */
 function getPlatformFunction (name) {
-  if (!globalThis.window?.navigator?.permissions?.[name]) return null
-  const value = globalThis.window.navigator.permissions[name]
+  if (!globalThis.navigator?.permissions?.[name]) return null
+  const value = globalThis.navigator.permissions[name]
   return value.bind(globalThis.navigator.permissions)
 }
 
@@ -107,7 +107,7 @@ class PermissionStatus extends EventTarget {
     })
 
     if (this.#signal?.aborted === true) {
-      this.removePermissionChangeListener()
+      this.#removePermissionChangeListener()
     }
 
     if (typeof this.#signal?.addEventListener === 'function') {
@@ -176,9 +176,11 @@ class PermissionStatus extends EventTarget {
    */
   [gc.finalizer] () {
     return {
-      args: [this.removePermissionChangeListener],
+      args: [this.#removePermissionChangeListener],
       handle (removePermissionChangeListener) {
-        removePermissionChangeListener()
+        if (typeof removePermissionChangeListener === 'function') {
+          removePermissionChangeListener()
+        }
       }
     }
   }
@@ -231,7 +233,9 @@ export async function query (descriptor, options) {
       }
     }
 
-    return platform.query(descriptor)
+    if (typeof platform.query === 'function') {
+      return platform.query(descriptor)
+    }
   }
 
   const result = await ipc.request('permissions.query', { name, signal: options?.signal })
@@ -240,7 +244,7 @@ export async function query (descriptor, options) {
     throw result.err
   }
 
-  return new PermissionStatus(name, result.data.state, options)
+  return new PermissionStatus(name, result.data?.state, options)
 }
 
 /**

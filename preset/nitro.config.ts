@@ -5,30 +5,6 @@ import type { Nitro } from "nitropack";
 import type { NitroPreset } from "nitropack";
 console.log('using nitro preset');
 
-const scriptTemplate = (baseURL = "/") => `
-<script>
-async function register () {
-  const registration = await navigator.serviceWorker.register('${joinURL(
-    baseURL,
-    "sw.js"
-  )}')
-  await navigator.serviceWorker.ready
-  registration.active.addEventListener('statechange', (event) => {
-    if (event.target.state === 'activated') {
-      window.location.reload()
-    }
-  })
-}
-if ('serviceWorker' in navigator) {
-  if (location.hostname !== 'localhost' && location.protocol === 'http:') {
-    location.replace(location.href.replace('http://', 'https://'))
-  } else {
-    register()
-  }
-}
-</script>
-`;
-
 const htmlTemplate = (baseURL = "/") => `<!DOCTYPE html>
 <html>
 <head>
@@ -49,10 +25,10 @@ const htmlTemplate = (baseURL = "/") => `<!DOCTYPE html>
   <script type="module">
     setInterval(async() => {
      const resp =  await navigator.serviceWorker.getRegistrations();
-     const fetched = await fetch('/hello');
+     const fetched = await fetch('/api');
      console.log(resp);
-     console.log(fetched);
-    }, 2000)
+     console.log(await fetched.text());
+    }, 2500)
   </script>
 </head>
 <body>
@@ -71,7 +47,7 @@ export default <NitroPreset>{
   // },
   node: false,
   noExternals: true,
-  exportConditions: ["socket", "socket:*"],
+  exportConditions: ["socket"],
   entry: process.cwd() + "/preset/entry.ts",
   output: {
     serverDir: "{{ output.dir }}/public/server",
@@ -84,13 +60,15 @@ export default <NitroPreset>{
       'platform': 'browser',
     }
   },
+  externals:[/^socket:.*/, ],
   rollupConfig: {
     external: [/^socket:.*/],
     'output':{
-      'globals':{
-        'socket:os': 'socket:os',
+      'format': 'es'
+      // 'globals':{
+      //   'socket:os': 'socket:os',
 
-      }
+      // }
     }
     // 'preserveEntrySignatures': 'strict',
     // 'shimMissingExports': true,
@@ -111,11 +89,12 @@ export default <NitroPreset>{
     async compiled(nitro: Nitro) {
       const dir = nitro.options.output.serverDir
       const fileContents = (await fsp.readFile(dir + "/index.mjs", "utf8"))
-      const pre = `globalThis =  self || globalThis || global || {};` + fileContents
+      let changedContents = `globalThis =  globalThis || self || global || {};` + fileContents
+      changedContents = changedContents.replace('_global.process = _global.process || process$1;', '').replace('const process = _global.process;', 'const process = _global.process || process$1;')
       // const pre = fileContents.replace(/globalThis/g, 'self')
       // .replace('globalThis._importMeta_={url:"file:///_entry.js",env:{}};', '').replace('globalThis._importMeta_={url:"file:///_entry.js",env:{}},function', 'function def')
       // console.log(file);
-      await fsp.writeFile(dir + "/index.mjs", pre, "utf8");
+      await fsp.writeFile(dir + "/index.mjs", changedContents, "utf8");
 
       // await fsp.writeFile(resolve(nitro.options.output.publicDir, "/server/index.mjs"), output.replace('globalThis._importMeta_={url:"file:///_entry.js",env:{}};', ''), "utf8");
       // Write sw.js file

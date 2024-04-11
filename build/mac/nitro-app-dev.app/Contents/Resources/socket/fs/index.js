@@ -24,13 +24,15 @@
  */
 
 import { isBufferLike, isFunction, noop } from '../util.js'
-import console from '../console.js'
+import { rand64 } from '../crypto.js'
+import { Buffer } from '../buffer.js'
 import ipc from '../ipc.js'
 import gc from '../gc.js'
 
 import { Dir, Dirent, sortDirectoryEntries } from './dir.js'
 import { DirectoryHandle, FileHandle } from './handle.js'
 import { ReadStream, WriteStream } from './stream.js'
+import { normalizeFlags } from './flags.js'
 import * as constants from './constants.js'
 import * as promises from './promises.js'
 import { Watcher } from './watcher.js'
@@ -48,11 +50,32 @@ function defaultCallback (err) {
   if (err) throw err
 }
 
+function normalizePath (path) {
+  if (path instanceof URL) {
+    if (path.origin === globalThis.location.origin) {
+      return normalizePath(path.href)
+    }
+
+    return null
+  }
+
+  if (URL.canParse(path)) {
+    const url = new URL(path)
+    if (url.origin === globalThis.location.origin) {
+      path = `./${url.pathname.slice(1)}`
+    }
+  }
+
+  return path
+}
+
 async function visit (path, options = null, callback) {
   if (typeof options === 'function') {
     callback = options
     options = {}
   }
+
+  path = normalizePath(path)
 
   const { flags, flag, mode } = options || {}
 
@@ -77,7 +100,7 @@ async function visit (path, options = null, callback) {
 /**
  * Asynchronously check access a file for a given mode calling `callback`
  * upon success or error.
- * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+ * @see {@link https://nodejs.org/api/fs.html#fsopenpath-flags-mode-callback}
  * @param {string | Buffer | URL} path
  * @param {string?|function(Error?)?} [mode = F_OK(0)]
  * @param {function(Error?)?} [callback]
@@ -92,6 +115,8 @@ export function access (path, mode, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  path = normalizePath(path)
+
   FileHandle
     .access(path, mode)
     .then((mode) => callback(null, mode))
@@ -99,13 +124,57 @@ export function access (path, mode, callback) {
 }
 
 /**
- * @ignore
+ * Synchronously check access a file for a given mode calling `callback`
+ * upon success or error.
+ * @see {@link https://nodejs.org/api/fs.html#fsopenpath-flags-mode-callback}
+ * @param {string | Buffer | URL} path
+ * @param {string?} [mode = F_OK(0)]
  */
-export function appendFile (path, data, options, callback) {
+export function accessSync (path, mode = constants.F_OK) {
+  path = normalizePath(path)
+  const result = ipc.sendSync('fs.access', { path, mode })
+
+  if (result.err) {
+    throw result.err
+  }
+
+  // F_OK means access in any way
+  return mode === constants.F_OK ? true : (result.data?.mode && mode) > 0
 }
 
 /**
- *
+ * Checks if a path exists
+ * @param {string | Buffer | URL} path
+ * @param {function(Boolean)?} [callback]
+ */
+export function exists (path, callback) {
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  path = normalizePath(path)
+  access(path, (err) => {
+    // eslint-disable-next-line
+    callback(err !== null)
+  })
+}
+
+/**
+ * Checks if a path exists
+ * @param {string | Buffer | URL} path
+ * @param {function(Boolean)?} [callback]
+ */
+export function existsSync (path) {
+  path = normalizePath(path)
+  try {
+    accessSync(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Asynchronously changes the permissions of a file.
  * No arguments other than a possible exception are given to the completion callback
  *
@@ -128,9 +197,34 @@ export function chmod (path, mode, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  path = normalizePath(path)
   ipc.request('fs.chmod', { mode, path }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   })
+}
+
+/**
+ * Synchronously changes the permissions of a file.
+ *
+ * @see {@link https://nodejs.org/api/fs.html#fschmodpath-mode-callback}
+ * @param {string | Buffer | URL} path
+ * @param {number} mode
+ */
+export function chmodSync (path, mode) {
+  if (typeof mode !== 'number') {
+    throw new TypeError(`The argument 'mode' must be a 32-bit unsigned integer or an octal string. Received ${mode}`)
+  }
+
+  if (mode < 0 || !Number.isInteger(mode)) {
+    throw new RangeError(`The value of "mode" is out of range. It must be an integer. Received ${mode}`)
+  }
+
+  path = normalizePath(path)
+  const result = ipc.sendSync('fs.chmod', { mode, path })
+
+  if (result.err) {
+    throw result.err
+  }
 }
 
 /**
@@ -141,6 +235,7 @@ export function chmod (path, mode, callback) {
  * @param {function} callback
  */
 export function chown (path, uid, gid, callback) {
+  path = normalizePath(path)
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -163,8 +258,35 @@ export function chown (path, uid, gid, callback) {
 }
 
 /**
+ * Changes ownership of file or directory at `path` with `uid` and `gid`.
+ * @param {string} path
+ * @param {number} uid
+ * @param {number} gid
+ */
+export function chownSync (path, uid, gid) {
+  path = normalizePath(path)
+  if (typeof path !== 'string') {
+    throw new TypeError('The argument \'path\' must be a string')
+  }
+
+  if (!Number.isInteger(uid)) {
+    throw new TypeError('The argument \'uid\' must be an integer')
+  }
+
+  if (!Number.isInteger(gid)) {
+    throw new TypeError('The argument \'gid\' must be an integer')
+  }
+
+  const result = ipc.sendSync('fs.chown', { path, uid, gid })
+
+  if (result.err) {
+    throw result.err
+  }
+}
+
+/**
  * Asynchronously close a file descriptor calling `callback` upon success or error.
- * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsclosefd-callback}
+ * @see {@link https://nodejs.org/api/fs.html#fsclosefd-callback}
  * @param {number} fd
  * @param {function(Error?)?} [callback]
  */
@@ -190,9 +312,12 @@ export function close (fd, callback) {
  * @param {string} dest - The destination file path.
  * @param {number} flags - Modifiers for copy operation.
  * @param {function(Error=)=} [callback] - The function to call after completion.
- * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscopyfilesrc-dest-mode-callback}
+ * @see {@link https://nodejs.org/api/fs.html#fscopyfilesrc-dest-mode-callback}
  */
-export function copyFile (src, dest, flags, callback) {
+export function copyFile (src, dest, flags = 0, callback) {
+  src = normalizePath(src)
+  dest = normalizePath(dest)
+
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
   }
@@ -201,7 +326,7 @@ export function copyFile (src, dest, flags, callback) {
     throw new TypeError('The argument \'dest\' must be a string')
   }
 
-  if (!Number.isInteger(flags)) {
+  if (flags && !Number.isInteger(flags)) {
     throw new TypeError('The argument \'flags\' must be an integer')
   }
 
@@ -215,7 +340,37 @@ export function copyFile (src, dest, flags, callback) {
 }
 
 /**
- * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options}
+ * Synchronously copies `src` to `dest` calling `callback` upon success or error.
+ * @param {string} src - The source file path.
+ * @param {string} dest - The destination file path.
+ * @param {number} flags - Modifiers for copy operation.
+ * @see {@link https://nodejs.org/api/fs.html#fscopyfilesrc-dest-mode-callback}
+ */
+export function copyFileSync (src, dest, flags = 0) {
+  src = normalizePath(src)
+  dest = normalizePath(dest)
+
+  if (typeof src !== 'string') {
+    throw new TypeError('The argument \'src\' must be a string')
+  }
+
+  if (typeof dest !== 'string') {
+    throw new TypeError('The argument \'dest\' must be a string')
+  }
+
+  if (!Number.isInteger(flags)) {
+    throw new TypeError('The argument \'flags\' must be an integer')
+  }
+
+  const result = ipc.sendSync('fs.copyFile', { src, dest, flags })
+
+  if (result.err) {
+    throw result.err
+  }
+}
+
+/**
+ * @see {@link https://nodejs.org/api/fs.html#fscreatewritestreampath-options}
  * @param {string | Buffer | URL} path
  * @param {object?} [options]
  * @returns {ReadStream}
@@ -225,6 +380,8 @@ export function createReadStream (path, options) {
     options = path
     path = options?.path || null
   }
+
+  path = normalizePath(path)
 
   let handle = null
   const stream = new ReadStream({
@@ -258,7 +415,7 @@ export function createReadStream (path, options) {
 }
 
 /**
- * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fscreatewritestreampath-options}
+ * @see {@link https://nodejs.org/api/fs.html#fscreatewritestreampath-options}
  * @param {string | Buffer | URL} path
  * @param {object?} [options]
  * @returns {WriteStream}
@@ -268,6 +425,8 @@ export function createWriteStream (path, options) {
     options = path
     path = options?.path || null
   }
+
+  path = normalizePath(path)
 
   let handle = null
   const stream = new WriteStream({
@@ -303,7 +462,7 @@ export function createWriteStream (path, options) {
  * Invokes the callback with the <fs.Stats> for the file descriptor. See
  * the POSIX fstat(2) documentation for more detail.
  *
- * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsfstatfd-options-callback}
+ * @see {@link https://nodejs.org/api/fs.html#fsfstatfd-options-callback}
  *
  * @param {number} fd - A file descriptor.
  * @param {object?|function?} [options] - An options object.
@@ -387,6 +546,8 @@ export function ftruncate (fd, offset, callback) {
  * @param {function} callback
  */
 export function lchown (path, uid, gid, callback) {
+  path = normalizePath(path)
+
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -415,6 +576,9 @@ export function lchown (path, uid, gid, callback) {
  * @param {function}
  */
 export function link (src, dest, callback) {
+  src = normalizePath(src)
+  dest = normalizePath(dest)
+
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
   }
@@ -436,8 +600,11 @@ export function link (src, dest, callback) {
  * @ignore
  */
 export function mkdir (path, options, callback) {
-  if ((typeof options === 'undefined') || (typeof options === 'function')) {
-    throw new TypeError('options must be an object.')
+  path = normalizePath(path)
+
+  if (typeof options === 'function') {
+    callback = options
+    options = null
   }
 
   if (typeof callback !== 'function') {
@@ -462,8 +629,34 @@ export function mkdir (path, options, callback) {
 }
 
 /**
+ * @ignore
+ * @param {string|URL} path
+ * @param {object=} [options]
+ */
+export function mkdirSync (path, options = null) {
+  path = normalizePath(path)
+
+  const mode = options?.mode || 0o777
+  const recursive = Boolean(options?.recursive) // default to false
+
+  if (typeof mode !== 'number') {
+    throw new TypeError('mode must be a number.')
+  }
+
+  if (mode < 0 || !Number.isInteger(mode)) {
+    throw new RangeError('mode must be a positive finite number.')
+  }
+
+  const result = ipc.sendSync('fs.mkdir', { mode, path, recursive })
+
+  if (result.err) {
+    throw result.err
+  }
+}
+
+/**
  * Asynchronously open a file calling `callback` upon success or error.
- * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsopenpath-flags-mode-callback}
+ * @see {@link https://nodejs.org/api/fs.html#fsopenpath-flags-mode-callback}
  * @param {string | Buffer | URL} path
  * @param {string?} [flags = 'r']
  * @param {string?} [mode = 0o666]
@@ -505,6 +698,8 @@ export function open (path, flags = 'r', mode = 0o666, options = null, callback)
     throw new TypeError('callback must be a function.')
   }
 
+  path = normalizePath(path)
+
   FileHandle
     .open(path, flags, mode, options)
     .then((handle) => {
@@ -516,7 +711,7 @@ export function open (path, flags = 'r', mode = 0o666, options = null, callback)
 
 /**
  * Asynchronously open a directory calling `callback` upon success or error.
- * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback}
+ * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
  * @param {string | Buffer | URL} path
  * @param {object?|function(Error?, Dir?)} [options]
  * @param {string?} [options.encoding = 'utf8']
@@ -533,6 +728,8 @@ export function opendir (path, options = {}, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  path = normalizePath(path)
+
   DirectoryHandle
     .open(path, options)
     .then((handle) => callback(null, new Dir(handle, options)))
@@ -541,7 +738,7 @@ export function opendir (path, options = {}, callback) {
 
 /**
  * Asynchronously read from an open file descriptor.
- * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
+ * @see {@link https://nodejs.org/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
  * @param {number} fd
  * @param {object | Buffer | TypedArray} buffer - The buffer that the data will be written to.
  * @param {number} offset - The position in buffer to write the data to.
@@ -575,8 +772,43 @@ export function read (fd, buffer, offset, length, position, options, callback) {
 }
 
 /**
+ * Asynchronously write to an open file descriptor.
+ * @see {@link https://nodejs.org/api/fs.html#fswritefd-buffer-offset-length-position-callback}
+ * @param {number} fd
+ * @param {object | Buffer | TypedArray} buffer - The buffer that the data will be written to.
+ * @param {number} offset - The position in buffer to write the data to.
+ * @param {number} length - The number of bytes to read.
+ * @param {number | BigInt | null} position - Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged.
+ * @param {function(Error?, number?, Buffer?)} callback
+ */
+export function write (fd, buffer, offset, length, position, options, callback) {
+  if (typeof options === 'function') {
+    callback = options
+    options = {}
+  }
+
+  if (typeof buffer === 'object' && !isBufferLike(buffer)) {
+    options = buffer
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  try {
+    FileHandle
+      .from(fd)
+      .write({ ...options, buffer, offset, length, position })
+      .then(({ bytesWritten, buffer }) => callback(null, bytesWritten, buffer))
+      .catch((err) => callback(err))
+  } catch (err) {
+    callback(err)
+  }
+}
+
+/**
  * Asynchronously read all entries in a directory.
- * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fsreaddirpath-options-callback}
+ * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
  * @param {string | Buffer | URL } path
  * @param {object?|function(Error?, object[])} [options]
  * @param {string?} [options.encoding ? 'utf8']
@@ -597,6 +829,7 @@ export function readdir (path, options = {}, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  path = normalizePath(path)
   options = {
     entries: DirectoryHandle.MAX_ENTRIES,
     withFileTypes: false,
@@ -644,10 +877,8 @@ export function readFile (path, options = {}, callback) {
     options = { encoding: options }
   }
 
-  options = {
-    flags: 'r',
-    ...options
-  }
+  path = normalizePath(path)
+  options = { flags: 'r', ...options }
 
   if (typeof callback !== 'function') {
     throw new TypeError('callback must be a function.')
@@ -673,6 +904,64 @@ export function readFile (path, options = {}, callback) {
 }
 
 /**
+ * @param {string | Buffer | URL | number } path
+ * @param {object?|function(Error?, Buffer?)} [options]
+ * @param {string?} [options.encoding ? 'utf8']
+ * @param {string?} [options.flag ? 'r']
+ * @param {AbortSignal?} [options.signal]
+ */
+export function readFileSync (path, options = {}) {
+  if (typeof options === 'string') {
+    options = { encoding: options }
+  }
+
+  path = normalizePath(path)
+  options = { flags: 'r', ...options }
+
+  let result = null
+
+  const id = String(options?.id || rand64())
+  const stats = statSync(path)
+
+  result = ipc.sendSync('fs.open', {
+    id,
+    mode: FileHandle.DEFAULT_OPEN_MODE,
+    path,
+    flags: normalizeFlags(options.flags)
+  }, options)
+
+  if (result.err) {
+    throw result.err
+  }
+
+  result = ipc.sendSync('fs.read', {
+    id,
+    size: stats.size,
+    offset: 0
+  }, { responseType: 'arraybuffer' })
+
+  if (result.err) {
+    throw result.err
+  }
+
+  const data = result.data
+
+  result = ipc.sendSync('fs.close', { id }, options)
+
+  if (result.err) {
+    throw result.err
+  }
+
+  const buffer = Buffer.from(data)
+
+  if (typeof options?.encoding === 'string') {
+    return buffer.toString(options.encoding)
+  }
+
+  return buffer
+}
+
+/**
  * Reads link at `path`
  * @param {string} path
  * @param {function(err, string)} callback
@@ -686,8 +975,9 @@ export function readlink (path, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  path = normalizePath(path)
   ipc.request('fs.readlink', { path }).then((result) => {
-    result?.err ? callback(result.err) : callback(result.data.path)
+    result?.err ? callback(result.err) : callback(null, result.data.path)
   }).catch(callback)
 }
 
@@ -717,6 +1007,9 @@ export function realpath (path, callback) {
  * @param {function} callback
  */
 export function rename (src, dest, callback) {
+  src = normalizePath(src)
+  dest = normalizePath(dest)
+
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -740,6 +1033,8 @@ export function rename (src, dest, callback) {
  * @param {function} callback
  */
 export function rmdir (path, callback) {
+  path = normalizePath(path)
+
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -754,7 +1049,25 @@ export function rmdir (path, callback) {
 }
 
 /**
- *
+ * Synchronously get the stats of a file
+ * @param {string | Buffer | URL | number } path - filename or file descriptor
+ * @param {object?} options
+ * @param {string?} [options.encoding ? 'utf8']
+ * @param {string?} [options.flag ? 'r']
+ */
+export function statSync (path, options) {
+  path = normalizePath(path)
+  const result = ipc.sendSync('fs.stat', { path })
+
+  if (result.err) {
+    throw result.err
+  }
+
+  return Stats.from(result.data, Boolean(options?.bigint))
+}
+
+/**
+ * Get the stats of a file
  * @param {string | Buffer | URL | number } path - filename or file descriptor
  * @param {object?} options
  * @param {string?} [options.encoding ? 'utf8']
@@ -792,12 +1105,52 @@ export function stat (path, options, callback) {
 }
 
 /**
+ * Get the stats of a symbolic link
+ * @param {string | Buffer | URL | number } path - filename or file descriptor
+ * @param {object?} options
+ * @param {string?} [options.encoding ? 'utf8']
+ * @param {string?} [options.flag ? 'r']
+ * @param {AbortSignal?} [options.signal]
+ * @param {function(Error?, Stats?)} callback
+ */
+export function lstat (path, options, callback) {
+  if (typeof options === 'function') {
+    callback = options
+    options = {}
+  }
+
+  if (typeof callback !== 'function') {
+    throw new TypeError('callback must be a function.')
+  }
+
+  visit(path, {}, async (err, handle) => {
+    let stats = null
+
+    if (err) {
+      callback(err)
+      return
+    }
+
+    try {
+      stats = await handle.lstat(options)
+    } catch (err) {
+      callback(err)
+      return
+    }
+
+    callback(null, stats)
+  })
+}
+
+/**
  * Creates a symlink of `src` at `dest`.
  * @param {string} src
  * @param {string} dest
  */
 export function symlink (src, dest, type = null, callback) {
   let flags = 0
+  src = normalizePath(src)
+  dest = normalizePath(dest)
 
   if (typeof src !== 'string') {
     throw new TypeError('The argument \'src\' must be a string')
@@ -838,6 +1191,8 @@ export function symlink (src, dest, type = null, callback) {
  * @param {function} callback
  */
 export function unlink (path, callback) {
+  path = normalizePath(path)
+
   if (typeof path !== 'string') {
     throw new TypeError('The argument \'path\' must be a string')
   }
@@ -852,7 +1207,7 @@ export function unlink (path, callback) {
 }
 
 /**
- * @see {@url https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fswritefilefile-data-options-callback}
+ * @see {@url https://nodejs.org/api/fs.html#fswritefilefile-data-options-callback}
  * @param {string | Buffer | URL | number } path - filename or file descriptor
  * @param {string | Buffer | TypedArray | DataView | object } data
  * @param {object?} options
@@ -872,11 +1227,8 @@ export function writeFile (path, data, options, callback) {
     options = { encoding: options }
   }
 
-  options = {
-    mode: 0o666,
-    flag: 'w',
-    ...options
-  }
+  path = normalizePath(path)
+  options = { mode: 0o666, flag: 'w', ...options }
 
   if (typeof callback !== 'function') {
     throw new TypeError('callback must be a function.')
@@ -912,6 +1264,7 @@ export function watch (path, options, callback = null) {
     callback = options
   }
 
+  path = normalizePath(path)
   const watcher = new Watcher(path, options)
   watcher.on('change', callback)
   return watcher
@@ -938,5 +1291,6 @@ for (const key in exports) {
   const value = exports[key]
   if (key in promises && isFunction(value) && isFunction(promises[key])) {
     value[Symbol.for('nodejs.util.promisify.custom')] = promises[key]
+    value[Symbol.for('socket.runtime.util.promisify.custom')] = promises[key]
   }
 }

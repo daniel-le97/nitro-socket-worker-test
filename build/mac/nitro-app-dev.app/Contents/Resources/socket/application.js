@@ -10,12 +10,152 @@
  * ```
  */
 
-import ipc, { primordials } from './ipc.js'
 import ApplicationWindow, { formatURL } from './window.js'
 import { isValidPercentageValue } from './util.js'
+import ipc, { primordials } from './ipc.js'
+import menu, { setMenu } from './application/menu.js'
 import os from './os.js'
 
 import * as exports from './application.js'
+
+function serializeConfig (config) {
+  if (!config || typeof config !== 'object') {
+    return ''
+  }
+
+  const entries = []
+  for (const key in config) {
+    entries.push(`${key} = ${config[key]}`)
+  }
+
+  return entries.join('\n')
+}
+
+export { menu }
+
+// get this from constant value in runtime
+export const MAX_WINDOWS = 32
+
+export class ApplicationWindowList {
+  #list = []
+
+  static from (...args) {
+    if (Array.isArray(args[0])) {
+      return new this(args[0])
+    }
+
+    return new this(args)
+  }
+
+  constructor (items) {
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        this.add(item)
+      }
+    }
+  }
+
+  get length () {
+    return this.#list.length
+  }
+
+  get size () {
+    return this.length
+  }
+
+  get [Symbol.iterator] () {
+    return this.#list[Symbol.iterator]
+  }
+
+  forEach (callback, thisArg) {
+    this.#list.forEach(callback, thisArg)
+  }
+
+  item (index) {
+    return this[index] ?? undefined
+  }
+
+  entries () {
+    const entries = []
+
+    for (const item of this.#list) {
+      entries.push([item.index, item])
+    }
+
+    return entries
+  }
+
+  keys () {
+    return this.entries().map((entry) => entry[0])
+  }
+
+  values () {
+    return this.entries().map((entry) => entry[1])
+  }
+
+  add (window) {
+    if (Number.isFinite(window.index) && window.index > -1) {
+      this[window.index] = window
+
+      for (let i = 0; i < this.#list.length; ++i) {
+        if (this.#list[i].index === window.index) {
+          this.#list.splice(i, 1)
+          break
+        }
+      }
+
+      this.#list.push(window)
+      this.#list.sort((a, b) => a.index - b.index)
+    }
+
+    return this
+  }
+
+  remove (windowOrIndex) {
+    let index = -1
+    if (Number.isFinite(windowOrIndex) && windowOrIndex > -1) {
+      index = windowOrIndex
+    } else {
+      index = windowOrIndex?.index ?? -1
+    }
+
+    if (index > -1) {
+      delete this[index]
+      for (let i = 0; i < this.#list.length; ++i) {
+        if (this.#list[i].index === index) {
+          this.#list.splice(i, 1)
+          return true
+        }
+      }
+    }
+
+    return false
+  }
+
+  contains (windowOrIndex) {
+    let index = -1
+    if (Number.isFinite(windowOrIndex) && windowOrIndex > -1) {
+      index = windowOrIndex
+    } else {
+      index = windowOrIndex?.index ?? -1
+    }
+
+    if (index > -1) {
+      return Boolean(this[index])
+    }
+
+    return false
+  }
+
+  clear () {
+    for (const item of this.#list) {
+      delete this[item.index]
+    }
+
+    this.#list = []
+    return this
+  }
+}
 
 /**
  * Returns the current window index
@@ -28,9 +168,19 @@ export function getCurrentWindowIndex () {
 /**
  * Creates a new window and returns an instance of ApplicationWindow.
  * @param {object} opts - an options object
- * @param {number} opts.index - the index of the window
- * @param {string} opts.path - the path to the HTML file to load into the window
- * @param {string=} opts.title - the title of the window
+ * @param {string=} opts.aspectRatio - a string (split on ':') provides two float values which set the window's aspect ratio.
+ * @param {boolean=} opts.closable - deterime if the window can be closed.
+ * @param {boolean=} opts.minimizable - deterime if the window can be minimized.
+ * @param {boolean=} opts.maximizable - deterime if the window can be maximized.
+ * @param {number} [opts.margin] - a margin around the webview. (Private)
+ * @param {number} [opts.radius] - a radius on the webview. (Private)
+ * @param {number} opts.index - the index of the window.
+ * @param {string} opts.path - the path to the HTML file to load into the window.
+ * @param {string=} opts.title - the title of the window.
+ * @param {string=} opts.titleBarStyle - determines the style of the titlebar (MacOS only).
+ * @param {string=} opts.trafficLightPosition - a string (split on 'x') provides the x and y position of the traffic lights (MacOS only).
+ * @param {string=} opts.backgroundColorDark - determines the background color of the window in dark mode.
+ * @param {string=} opts.backgroundColorLight - determines the background color of the window in light mode.
  * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
  * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
  * @param {(number|string)=} [opts.minWidth = 0] - the minimum width of the window
@@ -41,6 +191,9 @@ export function getCurrentWindowIndex () {
  * @param {boolean=} [opts.frameless=false] - whether the window is frameless
  * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
  * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
+ * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
+ * @param {string=} [opts.userScript=null] - A user script that will be injected into the window (desktop only)
+ * @param {string[]=} [opts.protocolHandlers] - An array of protocol handler schemes to register with the new window (requires service worker)
  * @return {Promise<ApplicationWindow>}
  */
 export async function createWindow (opts) {
@@ -55,13 +208,71 @@ export async function createWindow (opts) {
     index: globalThis.__args.index,
     title: opts.title ?? '',
     resizable: opts.resizable ?? true,
+    closable: opts.closable === true,
+    maximizable: opts.maximizable ?? true,
+    minimizable: opts.minimizable ?? true,
     frameless: opts.frameless ?? false,
+    aspectRatio: opts.aspectRatio ?? '',
+    titleBarStyle: opts.titleBarStyle ?? '',
+    trafficLightPosition: opts.trafficLightPosition ?? '',
+    backgroundColorDark: opts.backgroundColorDark ?? '',
+    backgroundColorLight: opts.backgroundColorLight ?? '',
     utility: opts.utility ?? false,
     canExit: opts.canExit ?? false,
+    /**
+     * @private
+     * @type {number}
+     */
+    radius: opts.radius ?? 0,
+    /**
+     * @private
+     * @type {number}
+     */
+    margin: opts.margin ?? 0,
     minWidth: opts.minWidth ?? 0,
     minHeight: opts.minHeight ?? 0,
     maxWidth: opts.maxWidth ?? '100%',
-    maxHeight: opts.maxHeight ?? '100%'
+    maxHeight: opts.maxHeight ?? '100%',
+    headless: opts.headless === true,
+    // @ts-ignore
+    debug: opts.debug === true, // internal
+    userScript: encodeURIComponent(opts.userScript ?? ''),
+    // @ts-ignore
+    __runtime_primordial_overrides__: (
+      // @ts-ignore
+      opts.__runtime_primordial_overrides__ &&
+      // @ts-ignore
+      typeof opts.__runtime_primordial_overrides__ === 'object'
+      // @ts-ignore
+        ? JSON.stringify(opts.__runtime_primordial_overrides__)
+        : ''
+    ),
+    // @ts-ignore
+    config: typeof opts?.config === 'string'
+      // @ts-ignore
+      ? opts.config
+      // @ts-ignore
+      : (serializeConfig(opts?.config) ?? '')
+  }
+
+  if (Array.isArray(opts?.protocolHandlers)) {
+    for (const protocolHandler of opts.protocolHandlers) {
+      // @ts-ignore
+      opts.config[`webview_protocol-handlers_${protocolHandler}`] = ''
+    }
+  } else if (opts?.protocolHandlers && typeof opts.protocolHandlers === 'object') {
+    // @ts-ignore
+    for (const key in opts.protocolHandlers) {
+      // @ts-ignore
+      if (opts.protocolHandlers[key] && typeof opts.protocolHandlers[key] === 'object') {
+        // @ts-ignore
+        opts.config[`webview_protocol-handlers_${key}`] = JSON.stringify(opts.protocolHandlers[key])
+        // @ts-ignore
+      } else if (typeof opts.protocolHandlers[key] === 'string') {
+        // @ts-ignore
+        opts.config[`webview_protocol-handlers_${key}`] = opts.protocolHandlers[key]
+      }
+    }
   }
 
   if ((opts.width != null && typeof opts.width !== 'number' && typeof opts.width !== 'string') ||
@@ -69,9 +280,11 @@ export async function createWindow (opts) {
     (typeof opts.width === 'number' && !(Number.isInteger(opts.width) && opts.width > 0))) {
     throw new Error(`Window width must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.width} instead.`)
   }
+
   if (typeof opts.width === 'string' && isValidPercentageValue(opts.width)) {
     options.width = opts.width
   }
+
   if (typeof opts.width === 'number') {
     options.width = opts.width.toString()
   }
@@ -81,9 +294,11 @@ export async function createWindow (opts) {
     (typeof opts.height === 'number' && !(Number.isInteger(opts.height) && opts.height > 0))) {
     throw new Error(`Window height must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.height} instead.`)
   }
+
   if (typeof opts.height === 'string' && isValidPercentageValue(opts.height)) {
     options.height = opts.height
   }
+
   if (typeof opts.height === 'number') {
     options.height = opts.height.toString()
   }
@@ -102,10 +317,10 @@ export async function createWindow (opts) {
  * @returns {Promise<{ width: number, height: number }>}
  */
 export async function getScreenSize () {
-  if (os.platform() === 'ios') {
+  if (os.platform() === 'ios' || os.platform() === 'android') {
     return {
-      width: globalThis.screen.availWidth,
-      height: globalThis.screen.availHeight
+      width: globalThis.screen?.availWidth ?? 0,
+      height: globalThis.screen?.availHeight ?? 0
     }
   }
   const { data, err } = await ipc.send('application.getScreenSize', { index: globalThis.__args.index })
@@ -124,31 +339,58 @@ function throwOnInvalidIndex (index) {
 /**
  * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
  * @param {number[]} [indices] - the indices of the windows
- * @return {Promise<Object.<number, ApplicationWindow>>}
  * @throws {Error} - if indices is not an array of integer numbers
+ * @return {Promise<ApplicationWindowList>}
  */
-export async function getWindows (indices) {
-  if (os.platform() === 'ios') {
-    return {
-      0: new ApplicationWindow({
+export async function getWindows (indices, options = null) {
+  if (
+    !globalThis.RUNTIME_APPLICATION_ALLOW_MULTI_WINDOWS &&
+    (os.platform() === 'ios' || os.platform() === 'android')
+  ) {
+    return new ApplicationWindowList([
+      new ApplicationWindow({
         index: 0,
-        width: globalThis.screen.availWidth,
-        height: globalThis.screen.availHeight,
+        id: globalThis.__args?.client?.id ?? null,
+        width: globalThis.screen?.availWidth ?? 0,
+        height: globalThis.screen?.availHeight ?? 0,
         title: document.title,
         status: 31
       })
-    }
+    ])
   }
+
   // TODO: create a local registry and return from it when possible
   const resultIndices = indices ?? []
+
   if (!Array.isArray(resultIndices)) {
     throw new Error('Indices list must be an array of integer numbers')
   }
+
   for (const index of resultIndices) {
     throwOnInvalidIndex(index)
   }
-  const { data: windows } = await ipc.send('application.getWindows', resultIndices)
-  return Object.fromEntries(windows.map(window => [Number(window.index), new ApplicationWindow(window)]))
+
+  const result = await ipc.send('application.getWindows', resultIndices)
+
+  if (result.err) {
+    throw result.err
+  }
+
+  // 0 indexed based key to `ApplicationWindow` object map
+  const windows = new ApplicationWindowList()
+
+  if (!Array.isArray(result.data)) {
+    return windows
+  }
+
+  for (const data of result.data) {
+    const max = Number.isFinite(options?.max) ? options.max : MAX_WINDOWS
+    if (options?.max === false || data.index < max) {
+      windows.add(new ApplicationWindow(data))
+    }
+  }
+
+  return windows
 }
 
 /**
@@ -157,9 +399,9 @@ export async function getWindows (indices) {
  * @throws {Error} - if index is not a valid integer number
  * @returns {Promise<ApplicationWindow>} - the ApplicationWindow instance or null if the window does not exist
  */
-export async function getWindow (index) {
+export async function getWindow (index, options) {
   throwOnInvalidIndex(index)
-  const windows = await getWindows([index])
+  const windows = await getWindows([index], options)
   return windows[index]
 }
 
@@ -168,7 +410,7 @@ export async function getWindow (index) {
  * @return {Promise<ApplicationWindow>}
  */
 export async function getCurrentWindow () {
-  return getWindow(globalThis.__args.index)
+  return await getWindow(globalThis.__args.index, { max: false })
 }
 
 /**
@@ -274,80 +516,14 @@ export async function exit (code = 0) {
  *
  */
 export async function setSystemMenu (o) {
-  const menu = o.value
+  return await setMenu(o, 'system')
+}
 
-  // validate the menu
-  if (typeof menu !== 'string' || menu.trim().length === 0) {
-    throw new Error('Menu must be a non-empty string')
-  }
-
-  const menus = menu.match(/\w+:\n/g)
-  if (!menus) {
-    throw new Error('Menu must have a valid format')
-  }
-  const menuTerminals = menu.match(/;/g)
-  const delta = menus.length - (menuTerminals?.length ?? 0)
-
-  if ((delta !== 0) && (delta !== -1)) {
-    throw new Error(`Expected ${menuTerminals.length} ';', found ${menus}.`)
-  }
-
-  const lines = menu.split('\n')
-  const e = new Error()
-  const frame = e.stack.split('\n')[2]
-  const callerLineNo = frame.split(':').reverse()[1]
-
-  // Use this link to test the regex (https://regexr.com/7lhqe)
-  const validLineRegex = /^(?:([^:]+)|(.+)[:][ ]*((?:[+\w]+(?:[ ]+|[ ]*$))*.*))$/m
-  const validModifiers = /^(Alt|CommandOrControl|Control|Meta)$/
-
-  for (let i = 0; i < lines.length; i++) {
-    const lineText = lines[i].trim()
-    if (lineText.length === 0) {
-      continue // Empty line
-    }
-    if (lineText[0] === ';') {
-      continue // End of submenu
-    }
-
-    let err
-
-    const match = lineText.match(validLineRegex)
-    if (!match) {
-      err = 'Unsupported syntax'
-    } else {
-      const label = match[1] || match[2]
-      if (label.startsWith('---')) {
-        continue // Valid separator
-      }
-      const binding = match[3]
-      if (label.length === 0) {
-        err = 'Missing label'
-      } else if (label.includes(':')) {
-        err = 'Invalid label contains ":"'
-      } else if (binding) {
-        const [accelerator, modifiersRaw] = binding.split(/ *\+ */)
-        const modifiers = modifiersRaw?.replace(';', '').split(', ') ?? []
-        if (validModifiers.test(accelerator)) {
-          err = 'Missing accelerator'
-        } else {
-          for (const modifier of modifiers) {
-            if (!validModifiers.test(modifier)) {
-              err = `Invalid modifier "${modifier}"`
-              break
-            }
-          }
-        }
-      }
-    }
-
-    if (err) {
-      const lineNo = Number(callerLineNo) + i
-      return ipc.Result.from({ err: new Error(`${err} on line ${lineNo}: "${lineText}"`) })
-    }
-  }
-
-  return await ipc.send('application.setSystemMenu', o)
+/**
+ * An alias to setSystemMenu for creating a tary menu
+ */
+export async function setTrayMenu (o) {
+  return await setMenu(o, 'tray')
 }
 
 /**

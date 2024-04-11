@@ -18,10 +18,10 @@
   <script type="module">
     setInterval(async() => {
      const resp =  await navigator.serviceWorker.getRegistrations();
-     const fetched = await fetch('/hello');
+     const fetched = await fetch('/api');
      console.log(resp);
-     console.log(fetched);
-    }, 2000)
+     console.log(await fetched.text());
+    }, 2500)
   </script>
 </head>
 <body>

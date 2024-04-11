@@ -1,7 +1,7 @@
 import { randomBytes } from '../crypto.js'
 import { isBufferLike } from '../util.js'
 import { Buffer } from '../buffer.js'
-import debug from './index.js'
+import { debug } from './index.js'
 
 /**
  * Hash function factory.
@@ -354,7 +354,6 @@ export class Packet {
         continue
       }
 
-      // console.log(k, value, spec)
       const encoded = Buffer.from(value || spec.default, spec.encoding)
 
       if (value?.length && encoded.length > spec.bytes) {
@@ -369,7 +368,7 @@ export class Packet {
       bufs.push(buf)
     }
 
-    return Buffer.concat(bufs)
+    return Buffer.concat(bufs, FRAME_BYTES)
   }
 
   static decode (buf) {
@@ -411,7 +410,7 @@ export class PacketPong extends Packet {
       responderPeerId: { required: true, type: 'string' },
       cacheSummaryHash: { type: 'string' },
       port: { type: 'number' },
-      address: { required: true, type: 'string' },
+      address: { type: 'string' },
       uptime: { type: 'number' },
       cacheSize: { type: 'number' },
       natType: { type: 'number' },
@@ -429,8 +428,8 @@ export class PacketPong extends Packet {
 
 export class PacketIntro extends Packet {
   static type = 3
-  constructor ({ clock, hops, clusterId, subclusterId, message }) {
-    super({ type: PacketIntro.type, clock, hops, clusterId, subclusterId, message })
+  constructor ({ clock, hops, clusterId, subclusterId, usr1, message }) {
+    super({ type: PacketIntro.type, clock, hops, clusterId, subclusterId, usr1, message })
 
     validatePacket(message, {
       requesterPeerId: { required: true, type: 'string' },
@@ -439,7 +438,7 @@ export class PacketIntro extends Packet {
       natType: { required: true, type: 'number' },
       address: { required: true, type: 'string' },
       port: { required: true, type: 'number' },
-      timestamp: { required: true, type: 'number' }
+      timestamp: { type: 'number' }
     })
   }
 }

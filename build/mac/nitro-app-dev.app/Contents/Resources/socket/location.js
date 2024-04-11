@@ -6,7 +6,11 @@ export const globalLocation = globalThis.location ?? {
   href: ''
 }
 
-export const href = globalLocation.href.replace(/https?:/, 'socket:')
+export const href = globalLocation.href
+  .replace(/https?:/, 'socket:')
+  .replace(/^blob:/, '')
+  .replace(/socket:\/\/?/, 'socket://')
+
 export const protocol = 'socket:'
 export const hostname = (
   // eslint-disable-next-line
@@ -16,9 +20,9 @@ export const hostname = (
 export const host = hostname
 export const search = href.split('?')[1] ?? ''
 export const hash = href.split('#')[1] ?? ''
-export const pathname = href.slice(
-  href.indexOf(hostname) + hostname.length
-)
+export const pathname = globalLocation.protocol === 'blob:'
+  ? '/'
+  : href.slice(href.indexOf(hostname) + hostname.length)
 
 export const origin = `${protocol}//${(host + pathname).replace(/\/\//g, '/')}`
 

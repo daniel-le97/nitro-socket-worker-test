@@ -2,8 +2,7 @@
  * Symbolic global registry
  * @ignore
  */
-/* eslint-disable-next-line new-parens */
-const registry = new class GlobalsRegistry {
+export class GlobalsRegistry {
   get global () {
     return globalThis ?? this
   }
@@ -22,12 +21,19 @@ const registry = new class GlobalsRegistry {
   }
 }
 
+const registry = (
+  globalThis.top?.__globals ??
+  new GlobalsRegistry()
+)
+
 /**
- * Gets a global by name.
+ * Gets a runtime global value by name.
  * @ignore
+ * @param {string} name
+ * @return {any|null}
  */
 export function get (name) {
-  return registry.get(name)
+  return registry.get(name) ?? null
 }
 
 export default registry

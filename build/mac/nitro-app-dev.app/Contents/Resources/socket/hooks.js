@@ -1,3 +1,4 @@
+/* global ApplicationURLEvent */
 /**
  * @module hooks
  *
@@ -64,31 +65,32 @@
  * ```
  */
 import { Event, CustomEvent, ErrorEvent, MessageEvent } from './events.js'
+import { toProperCase } from './util.js'
 import location from './location.js'
 
-// primordial setup
-const EventTargetPrototype = {
-  addEventListener: Function.prototype.call.bind(EventTarget.prototype.addEventListener),
-  removeEventListener: Function.prototype.call.bind(EventTarget.prototype.removeEventListener),
-  dispatchEvent: Function.prototype.call.bind(EventTarget.prototype.dispatchEvent)
-}
+/**
+ * @typedef {{ signal?: AbortSignal }} WaitOptions
+ */
 
-function addEventListener (target, type, callback) {
-  EventTargetPrototype.addEventListener(target, type, callback)
+function addEventListener (target, type, callback, ...args) {
+  target.addEventListener(type, callback, ...args)
 }
 
 function addEventListenerOnce (target, type, callback) {
-  EventTargetPrototype.addEventListener(target, type, callback, { once: true })
+  target.addEventListener(type, callback, { once: true })
 }
 
-async function waitForEvent (target, type) {
+async function waitForEvent (target, type, timeout = -1) {
   return await new Promise((resolve) => {
+    if (timeout > -1) {
+      setTimeout(resolve, timeout)
+    }
     addEventListenerOnce(target, type, resolve)
   })
 }
 
 function dispatchEvent (target, event) {
-  queueMicrotask(() => EventTargetPrototype.dispatchEvent(target, event))
+  queueMicrotask(() => target.dispatchEvent(event))
 }
 
 function dispatchInitEvent (target) {
@@ -108,15 +110,30 @@ function proxyGlobalEvents (global, target) {
     addEventListener(global, type, (event) => {
       const { type, data, detail = null, error } = event
       const { origin } = location
-      if (error) {
-        const { message, filename = import.meta.url } = error
-        dispatchEvent(target, new ErrorEvent(type, { message, filename, error, detail }))
-      } else if (type && data) {
-        dispatchEvent(target, new MessageEvent(type, { origin, data, detail }))
+
+      if (type === 'applicationurl') {
+        dispatchEvent(target, new ApplicationURLEvent(type, {
+          ...event,
+          origin,
+          data: event.data,
+          url: event.url.toString()
+        }))
+      } else if (type === 'error' || error) {
+        const { message, filename = import.meta.url || globalThis.location.href } = error || {}
+        dispatchEvent(target, new ErrorEvent(type, {
+          ...event,
+          message,
+          filename,
+          error,
+          detail,
+          origin
+        }))
+      } else if (data || type === 'message') {
+        dispatchEvent(target, new MessageEvent(type, { ...event, origin }))
       } else if (detail) {
-        dispatchEvent(target, new CustomEvent(type, { detail }))
+        dispatchEvent(target, new CustomEvent(type, { ...event, origin }))
       } else {
-        dispatchEvent(target, new Event(type))
+        dispatchEvent(target, new Event(type, { ...event, origin }))
       }
     })
   }
@@ -124,7 +141,6 @@ function proxyGlobalEvents (global, target) {
 
 // state
 let isGlobalLoaded = false
-let isRuntimeInitialized = false
 
 export const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
 
@@ -266,7 +282,7 @@ export class Hooks extends EventTarget {
    * @type {boolean}
    */
   get isRuntimeReady () {
-    return isRuntimeInitialized
+    return Boolean(globalThis.__RUNTIME_INIT_NOW__)
   }
 
   /**
@@ -314,14 +330,12 @@ export class Hooks extends EventTarget {
     const { isWorkerContext, document, global } = this
     const readyState = document?.readyState
 
-    isRuntimeInitialized = Boolean(global.__RUNTIME_INIT_NOW__)
-
     proxyGlobalEvents(global, this)
 
     // if runtime is initialized, then 'DOMContentLoaded' (document),
     // 'load' (window), and the 'init' (window) events have all been dispatched
     // prior to hook initialization
-    if (isRuntimeInitialized) {
+    if (this.isRuntimeReady) {
       dispatchLoadEvent(this)
       dispatchInitEvent(this)
       dispatchReadyEvent(this)
@@ -329,17 +343,70 @@ export class Hooks extends EventTarget {
     }
 
     addEventListenerOnce(global, RUNTIME_INIT_EVENT_NAME, () => {
-      isRuntimeInitialized = true
       dispatchInitEvent(this)
       dispatchReadyEvent(this)
     })
 
     if (!isWorkerContext && readyState !== 'complete') {
-      await waitForEvent(global, 'load')
+      const pending = []
+      pending.push(waitForEvent(global, 'load', 500))
+      if (document) {
+        pending.push(waitForEvent(document, 'DOMContentLoaded'))
+      }
+
+      await Promise.race(pending)
     }
 
     isGlobalLoaded = true
     dispatchLoadEvent(this)
+  }
+
+  /**
+   * Wait for a hook event to occur.
+   * @template {Event | T extends Event}
+   * @param {string|function} nameOrFunction
+   * @param {WaitOptions=} [options]
+   * @return {Promise<T>}
+   */
+  async wait (nameOrFunction, options = null) {
+    const signal = options?.signal ?? null
+
+    if (typeof nameOrFunction === 'string') {
+      const name = /** @type {string} */ (nameOrFunction)
+      const method = `on${toProperCase(name.toLowerCase())}`
+
+      if (typeof this[method] === 'function') {
+        return await new Promise((resolve) => {
+          const removeEventListener = this[method](resolve)
+
+          if (signal?.aborted) {
+            removeEventListener()
+          } else if (signal) {
+            addEventListenerOnce(signal, 'abort', removeEventListener)
+          }
+        })
+      }
+    } else if (typeof nameOrFunction === 'function') {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        this.constructor.prototype,
+        /** @type {function} */ (nameOrFunction).name
+      )
+
+      if (descriptor?.value === nameOrFunction) {
+        return await new Promise((resolve) => {
+          const removeEventListener = /** @type {function} */ (nameOrFunction)
+            .call(this, resolve)
+
+          if (signal?.aborted) {
+            removeEventListener()
+          } else if (signal) {
+            addEventListenerOnce(signal, 'abort', removeEventListener)
+          }
+        })
+      }
+    }
+
+    throw new TypeError(`${nameOrFunction} is not a valid hook to wait for`)
   }
 
   /**
@@ -505,6 +572,16 @@ export class Hooks extends EventTarget {
  * @ignore
  */
 const hooks = new Hooks()
+
+/**
+ * Wait for a hook event to occur.
+ * @template {Event | T extends Event}
+ * @param {string|function} nameOrFunction
+ * @return {Promise<T>}
+ */
+export async function wait (nameOrFunction) {
+  return await hooks.wait(nameOrFunction)
+}
 
 /**
  * Wait for the global Window, Document, and Runtime to be ready.

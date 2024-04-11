@@ -1,21 +1,20 @@
-import * as exports from "./errors.js";
+import * as exports from './errors.js'
 
-export default exports;
+export default exports
 
-const DOMException =
-  globalThis.DOMException ?? class DOMException extends Error {};
+const DOMException = globalThis.DOMException ?? class DOMException extends Error {}
 
-export const ABORT_ERR = DOMException?.ABORT_ERR ?? 20;
-export const ENCODING_ERR = DOMException?.ENCODING_ERR ?? 32;
-export const INVALID_ACCESS_ERR = DOMException?.INVALID_ACCESS_ERR ?? 15;
-export const INDEX_SIZE_ERR = DOMException?.INDEX_SIZE_ERR ?? 1;
-export const NETWORK_ERR = DOMException?.NETWORK_ERR ?? 19;
-export const NOT_ALLOWED_ERR = DOMException?.NOT_ALLOWED_ERR ?? 31;
-export const NOT_FOUND_ERR = DOMException?.NOT_FOUND_ERR ?? 8;
-export const NOT_SUPPORTED_ERR = DOMException?.NOT_SUPPORTED_ERR ?? 9;
-export const OPERATION_ERR = DOMException?.OPERATION_ERR ?? 30;
-export const SECURITY_ERR = DOMException?.SECURITY_ERR ?? 18;
-export const TIMEOUT_ERR = DOMException?.TIMEOUT_ERR ?? 23;
+export const ABORT_ERR = DOMException?.ABORT_ERR ?? 20
+export const ENCODING_ERR = DOMException?.ENCODING_ERR ?? 32
+export const INVALID_ACCESS_ERR = DOMException?.INVALID_ACCESS_ERR ?? 15
+export const INDEX_SIZE_ERR = DOMException?.INDEX_SIZE_ERR ?? 1
+export const NETWORK_ERR = DOMException?.NETWORK_ERR ?? 19
+export const NOT_ALLOWED_ERR = DOMException?.NOT_ALLOWED_ERR ?? 31
+export const NOT_FOUND_ERR = DOMException?.NOT_FOUND_ERR ?? 8
+export const NOT_SUPPORTED_ERR = DOMException?.NOT_SUPPORTED_ERR ?? 9
+export const OPERATION_ERR = DOMException?.OPERATION_ERR ?? 30
+export const SECURITY_ERR = DOMException?.SECURITY_ERR ?? 18
+export const TIMEOUT_ERR = DOMException?.TIMEOUT_ERR ?? 23
 
 /**
  * An `AbortError` is an error type thrown in an `onabort()` level 0
@@ -26,36 +25,34 @@ export class AbortError extends Error {
    * The code given to an `ABORT_ERR` `DOMException`
    * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
-  static get code() {
-    return ABORT_ERR;
-  }
+  static get code () { return ABORT_ERR }
 
   /**
    * `AbortError` class constructor.
    * @param {AbortSignal|string} reasonOrSignal
    * @param {AbortSignal=} [signal]
    */
-  constructor(reason, signal, ...args) {
+  constructor (reason, signal, ...args) {
     if (reason?.reason) {
-      signal = reason;
-      reason = signal.reason;
+      signal = reason
+      reason = signal.reason
     }
 
-    super(reason || signal?.reason || "The operation was aborted", ...args);
+    super(reason || signal?.reason || 'The operation was aborted', ...args)
 
-    this.signal = signal || null;
+    this.signal = signal || null
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, AbortError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, AbortError)
     }
   }
 
-  get name() {
-    return "AbortError";
+  get name () {
+    return 'AbortError'
   }
 
-  get code() {
-    return "ABORT_ERR";
+  get code () {
+    return 'ABORT_ERR'
   }
 }
 
@@ -67,29 +64,27 @@ export class BadRequestError extends Error {
   /**
    * The default code given to a `BadRequestError`
    */
-  static get code() {
-    return 0;
-  }
+  static get code () { return 0 }
 
   /**
    * `BadRequestError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, BadRequestError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, BadRequestError)
     }
   }
 
-  get name() {
-    return "BadRequestError";
+  get name () {
+    return 'BadRequestError'
   }
 
-  get code() {
-    return "BAD_REQUEST_ERR";
+  get code () {
+    return 'BAD_REQUEST_ERR'
   }
 }
 
@@ -101,29 +96,27 @@ export class EncodingError extends Error {
   /**
    * The code given to an `ENCODING_ERR` `DOMException`.
    */
-  static get code() {
-    return ENCODING_ERR;
-  }
+  static get code () { return ENCODING_ERR }
 
   /**
    * `EncodingError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, EncodingError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, EncodingError)
     }
   }
 
-  get name() {
-    return "EncodingError";
+  get name () {
+    return 'EncodingError'
   }
 
-  get code() {
-    return "ENCODING_ERR";
+  get code () {
+    return 'ENCODING_ERR'
   }
 }
 
@@ -131,36 +124,34 @@ export class EncodingError extends Error {
  * An error type derived from an `errno` code.
  */
 export class ErrnoError extends Error {
-  static get code() {
-    return "";
-  }
+  static get code () { return '' }
   // lazily set during init phase
-  static errno = null;
+  static errno = null
 
-  #name = "";
-  #code = 0;
+  #name = ''
+  #code = 0
 
   /**
    * `ErrnoError` class constructor.
-   * @param {import('./errno.js').errno|string} code
+   * @param {import('./errno').errno|string} code
    */
-  constructor(code, message = null, ...args) {
-    super(message || ErrnoError.errno.getMessage(code) || "", ...args);
+  constructor (code, message = null, ...args) {
+    super(message || ErrnoError.errno.getMessage(code) || '', ...args)
 
-    this.#code = ErrnoError.errno.getCode(code);
-    this.#name = ErrnoError.errno.getName(code) || "SystemError";
+    this.#code = ErrnoError.errno.getCode(code)
+    this.#name = ErrnoError.errno.getName(code) || 'SystemError'
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, EncodingError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, EncodingError)
     }
   }
 
-  get name() {
-    return this.#name;
+  get name () {
+    return this.#name
   }
 
-  get code() {
-    return this.#code;
+  get code () {
+    return this.#code
   }
 }
 
@@ -172,29 +163,27 @@ export class FinalizationRegistryCallbackError extends Error {
   /**
    * The default code given to an `FinalizationRegistryCallbackError`
    */
-  static get code() {
-    return 0;
-  }
+  static get code () { return 0 }
 
   /**
    * `FinalizationRegistryCallbackError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, FinalizationRegistryCallbackError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, FinalizationRegistryCallbackError)
     }
   }
 
-  get name() {
-    return "FinalizationRegistryCallbackError";
+  get name () {
+    return 'FinalizationRegistryCallbackError'
   }
 
-  get code() {
-    return "FINALIZATION_REGISTRY_CALLBACK_ERR";
+  get code () {
+    return 'FINALIZATION_REGISTRY_CALLBACK_ERR'
   }
 }
 
@@ -206,29 +195,27 @@ export class IllegalConstructorError extends TypeError {
   /**
    * The default code given to an `IllegalConstructorError`
    */
-  static get code() {
-    return 0;
-  }
+  static get code () { return 0 }
 
   /**
    * `IllegalConstructorError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, IllegalConstructorError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, IllegalConstructorError)
     }
   }
 
-  get name() {
-    return "IllegalConstructorError";
+  get name () {
+    return 'IllegalConstructorError'
   }
 
-  get code() {
-    return "ILLEGAL_CONSTRUCTOR_ERR";
+  get code () {
+    return 'ILLEGAL_CONSTRUCTOR_ERR'
   }
 }
 
@@ -240,33 +227,31 @@ export class IndexSizeError extends Error {
   /**
    * The code given to an `INDEX_SIZE_ERR` `DOMException`
    */
-  static get code() {
-    return INDEX_SIZE_ERR;
-  }
+  static get code () { return INDEX_SIZE_ERR }
 
   /**
    * `IndexSizeError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, IndexSizeError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, IndexSizeError)
     }
   }
 
-  get name() {
-    return "IndexSizeError";
+  get name () {
+    return 'IndexSizeError'
   }
 
-  get code() {
-    return "INDEX_SIZE_ERR";
+  get code () {
+    return 'INDEX_SIZE_ERR'
   }
 }
 
-export const kInternalErrorCode = Symbol.for("InternalError.code");
+export const kInternalErrorCode = Symbol.for('InternalError.code')
 
 /**
  * An `InternalError` is an error type thrown when an internal exception
@@ -276,43 +261,41 @@ export class InternalError extends Error {
   /**
    * The default code given to an `InternalError`
    */
-  static get code() {
-    return 0;
-  }
+  static get code () { return 0 }
 
   /**
    * `InternalError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, code, ...args) {
-    super(message, code, ...args);
+  constructor (message, code, ...args) {
+    super(message, code, ...args)
 
     if (code) {
-      this[kInternalErrorCode] = code;
+      this[kInternalErrorCode] = code
     }
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, InternalError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InternalError)
     }
   }
 
-  get name() {
-    return "InternalError";
+  get name () {
+    return 'InternalError'
   }
 
   /**
    * @type {number|string}
    */
-  get code() {
-    return this[kInternalErrorCode] || "INTERNAL_ERR";
+  get code () {
+    return this[kInternalErrorCode] || 'INTERNAL_ERR'
   }
 
   /**
    * @param {number|string}
    */
-  set code(code) {
-    this[kInternalErrorCode] = code;
+  set code (code) {
+    this[kInternalErrorCode] = code
   }
 }
 
@@ -325,29 +308,27 @@ export class InvalidAccessError extends Error {
    * The code given to an `INVALID_ACCESS_ERR` `DOMException`
    * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
-  static get code() {
-    return INVALID_ACCESS_ERR;
-  }
+  static get code () { return INVALID_ACCESS_ERR }
 
   /**
    * `InvalidAccessError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, InvalidAccessError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidAccessError)
     }
   }
 
-  get name() {
-    return "InvalidAccessError";
+  get name () {
+    return 'InvalidAccessError'
   }
 
-  get code() {
-    return "INVALID_ACCESS_ERR";
+  get code () {
+    return 'INVALID_ACCESS_ERR'
   }
 }
 
@@ -360,31 +341,29 @@ export class NetworkError extends Error {
    * The code given to an `NETWORK_ERR` `DOMException`
    * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
-  static get code() {
-    return NETWORK_ERR;
-  }
+  static get code () { return NETWORK_ERR }
 
   /**
    * `NetworkError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    this.name = "NetworkError";
+    this.name = 'NetworkError'
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, NetworkError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, NetworkError)
     }
   }
 
-  get name() {
-    return "NetworkError";
+  get name () {
+    return 'NetworkError'
   }
 
-  get code() {
-    return "NETWORK_ERR";
+  get code () {
+    return 'NETWORK_ERR'
   }
 }
 
@@ -397,29 +376,27 @@ export class NotAllowedError extends Error {
    * The code given to an `NOT_ALLOWED_ERR` `DOMException`
    * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
-  static get code() {
-    return NOT_ALLOWED_ERR;
-  }
+  static get code () { return NOT_ALLOWED_ERR }
 
   /**
    * `NotAllowedError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, NotAllowedError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, NotAllowedError)
     }
   }
 
-  get name() {
-    return "NotAllowedError";
+  get name () {
+    return 'NotAllowedError'
   }
 
-  get code() {
-    return "NOT_ALLOWED_ERR";
+  get code () {
+    return 'NOT_ALLOWED_ERR'
   }
 }
 
@@ -432,29 +409,27 @@ export class NotFoundError extends Error {
    * The code given to an `NOT_FOUND_ERR` `DOMException`
    * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
-  static get code() {
-    return NOT_FOUND_ERR;
-  }
+  static get code () { return NOT_FOUND_ERR }
 
   /**
    * `NotFoundError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, NotFoundError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, NotFoundError)
     }
   }
 
-  get name() {
-    return "NotFoundError";
+  get name () {
+    return 'NotFoundError'
   }
 
-  get code() {
-    return "NOT_FOUND_ERR";
+  get code () {
+    return 'NOT_FOUND_ERR'
   }
 }
 
@@ -467,29 +442,27 @@ export class NotSupportedError extends Error {
    * The code given to an `NOT_SUPPORTED_ERR` `DOMException`
    * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
-  static get code() {
-    return NOT_SUPPORTED_ERR;
-  }
+  static get code () { return NOT_SUPPORTED_ERR }
 
   /**
    * `NotSupportedError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, NotSupportedError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, NotSupportedError)
     }
   }
 
-  get name() {
-    return "NotSupportedError";
+  get name () {
+    return 'NotSupportedError'
   }
 
-  get code() {
-    return "NOT_SUPPORTED_ERR";
+  get code () {
+    return 'NOT_SUPPORTED_ERR'
   }
 }
 
@@ -503,22 +476,22 @@ export class ModuleNotFoundError extends NotFoundError {
    * @param {string} message
    * @param {string[]=} [requireStack]
    */
-  constructor(message, requireStack) {
-    super(message);
+  constructor (message, requireStack) {
+    super(message)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, ModuleNotFoundError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ModuleNotFoundError)
     }
 
-    this.requireStack = requireStack || [];
+    this.requireStack = requireStack || []
   }
 
-  get name() {
-    return "ModuleNotFoundError";
+  get name () {
+    return 'ModuleNotFoundError'
   }
 
-  get code() {
-    return "MODULE_NOT_FOUND";
+  get code () {
+    return 'MODULE_NOT_FOUND'
   }
 }
 
@@ -530,29 +503,27 @@ export class OperationError extends Error {
   /**
    * The code given to an `OPERATION_ERR` `DOMException`
    */
-  static get code() {
-    return OPERATION_ERR;
-  }
+  static get code () { return OPERATION_ERR }
 
   /**
    * `OperationError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, OperationError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, OperationError)
     }
   }
 
-  get name() {
-    return "OperationError";
+  get name () {
+    return 'OperationError'
   }
 
-  get code() {
-    return "OPERATION_ERR";
+  get code () {
+    return 'OPERATION_ERR'
   }
 }
 
@@ -564,29 +535,27 @@ export class SecurityError extends Error {
   /**
    * The code given to an `SECURITY_ERR` `DOMException`
    */
-  static get code() {
-    return SECURITY_ERR;
-  }
+  static get code () { return SECURITY_ERR }
 
   /**
    * `SecurityError` class constructor.
    * @param {string} message
    * @param {number} [code]
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, SecurityError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, SecurityError)
     }
   }
 
-  get name() {
-    return "SecurityError";
+  get name () {
+    return 'SecurityError'
   }
 
-  get code() {
-    return "SECURITY_ERR";
+  get code () {
+    return 'SECURITY_ERR'
   }
 }
 
@@ -598,27 +567,25 @@ export class TimeoutError extends Error {
    * The code given to an `TIMEOUT_ERR` `DOMException`
    * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException}
    */
-  static get code() {
-    return TIMEOUT_ERR;
-  }
+  static get code () { return TIMEOUT_ERR }
 
   /**
    * `TimeoutError` class constructor.
    * @param {string} message
    */
-  constructor(message, ...args) {
-    super(message, ...args);
+  constructor (message, ...args) {
+    super(message, ...args)
 
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, TimeoutError);
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, TimeoutError)
     }
   }
 
-  get name() {
-    return "TimeoutError";
+  get name () {
+    return 'TimeoutError'
   }
 
-  get code() {
-    return "TIMEOUT_ERR";
+  get code () {
+    return 'TIMEOUT_ERR'
   }
 }
