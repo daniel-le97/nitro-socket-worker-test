@@ -26,10 +26,12 @@ const htmlTemplate = (baseURL = "/") => `<!DOCTYPE html>
     setInterval(async() => {
      const reg =  await navigator.serviceWorker.getRegistrations();
      const fetched = await fetch('/dogs');
-     const response = await fetched.text();
      console.log(reg);
-     console.log(response);
-     document.getElementById('app').innerText = response;
+     if(fetched.ok){
+       const response = await fetched.text();
+       console.log(response);
+       document.getElementById('app').innerText = response;
+     }
     }, 2500)
   </script>
 </head>
@@ -59,11 +61,11 @@ export default <NitroPreset>{
   // commands: {
   //   preview: "npx serve ./public",
   // },
-  esbuild:{
-    'options':{
-      'platform': 'browser',
-    }
-  },
+  // esbuild:{
+  //   'options':{
+  //     'platform': 'browser',
+  //   }
+  // },
   externals:[/^socket:.*/, ],
   rollupConfig: {
     external: [/^socket:.*/],
@@ -95,13 +97,9 @@ export default <NitroPreset>{
       const fileContents = (await fsp.readFile(dir + "/index.mjs", "utf8"))
       let changedContents = `globalThis =  globalThis || self || global || {};` + fileContents
       changedContents = changedContents.replace('_global.process = _global.process || process$1;', '').replace('const process = _global.process;', 'const process = _global.process || process$1;')
-      // const pre = fileContents.replace(/globalThis/g, 'self')
-      // .replace('globalThis._importMeta_={url:"file:///_entry.js",env:{}};', '').replace('globalThis._importMeta_={url:"file:///_entry.js",env:{}},function', 'function def')
-      // console.log(file);
+
       await fsp.writeFile(dir + "/index.mjs", changedContents, "utf8");
 
-      // await fsp.writeFile(resolve(nitro.options.output.publicDir, "/server/index.mjs"), output.replace('globalThis._importMeta_={url:"file:///_entry.js",env:{}};', ''), "utf8");
-      // Write sw.js file
       await fsp.writeFile(
         resolve(nitro.options.output.publicDir, "sw.js"),
         `self.importScripts('${joinURL(
@@ -110,35 +108,7 @@ export default <NitroPreset>{
         )}');`,
         "utf8"
       );
-      // await fsp.writeFile(
-      //   resolve(nitro.options.output.publicDir, "sw.js"),
-      //   `onactivate = (event) => {
-      //     globalThis.clients.claim()
-      //   }
-        
-      //   oninstall = (event) => {
-      //     globalThis.skipWaiting()
-      //   }
-        
-      //   onfetch = (event) => {
-      //     event.respondWith(fetch('/icon.png'))
-      //   }`,
-      //   "utf8"
-      // );
 
-      // await fsp.writeFile(
-      //   resolve(nitro.options.output.publicDir, "sw.js"),
-      //   `import * as mod from "socket:module";
-
-      //   const require = mod.createRequire(import.meta.url);
-        
-      //   const nitro = require("./server/index.mjs");
-        
-      //   export default (req, env, ctx) => {
-      //       return new Response("Hello, World!")
-      //   }`,
-      //   "utf8"
-      // );
       // Write fallback initializer files
       const html = htmlTemplate(nitro.options.baseURL);
       if (!existsSync(resolve(nitro.options.output.publicDir, "index.html"))) {

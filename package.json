@@ -6,7 +6,7 @@
     "prepare": "nitro prepare",
     "preview": "node .output/server/index.mjs",
     "builder" : "ssc build && bun run fix && ssc run",
-    "start": "bun run build && bun run debug",
+    "start": "bun run build && ssc build && bun run debug",
     "debug": "SOCKET_RUNTIME_SERVICE_WORKER_DEBUG=1 ssc build -r -o",
     "fix": "bun fix.ts"
   },
