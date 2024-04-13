@@ -133,7 +133,7 @@ export class ErrnoError extends Error {
 
   /**
    * `ErrnoError` class constructor.
-   * @param {import('./errno').errno|string} code
+   * @param {import('./errno.js').errno|string} code
    */
   constructor (code, message = null, ...args) {
     super(message || ErrnoError.errno.getMessage(code) || '', ...args)
