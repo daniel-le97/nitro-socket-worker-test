@@ -1,7 +1,7 @@
 {
   "extends": "./.nitro/types/tsconfig.json",
   "compilerOptions": {
-    "types": ["@socketsupply/socket"]
+    "types": ["./socket/index.d.ts"]
   },
   "exclude": ["build/*"]
 }

@@ -1,0 +1,700 @@
+<meta name="runtime-frame-source" content="serviceworker" />
+<meta name="referrer" content="unsafe-url">
+<meta http-equiv="Referrer-Policy" content="unsafe-url">
+<meta name="begin-runtime-preload">
+<script type="text/javascript">
+;(() => {
+  if (globalThis.__args) return;
+  globalThis.__args = {}
+  const env = 'PWD=%2FUsers%2Fdaniel%2Fhomelab%2FGitHub%2Flanguages%2Fjavascript%2Fnitro%2Dapp&USER=daniel&TMPDIR=%2Fvar%2Ffolders%2Fld%2F6g%5Fgmn9j4hj%5F2wql188b71%5Fw0000gn%2FT%2F&PWD=%2FUsers%2Fdaniel%2Fhomelab%2FGitHub%2Flanguages%2Fjavascript%2Fnitro%
+2Dapp&';
+  Object.defineProperties(globalThis.__args, {
+  argv: {
+    value: ['/Users/daniel/homelab/GitHub/languages/javascript/nitro-app/build/mac/nitro-app-dev.app/Contents/MacOS/nitro-app-dev', '--platform=mac', '--from-ssc', ],
+    enumerable: true
+  },
+  client: {
+    configurable: false,
+    enumerable: true,
+    writable: false,
+    value: {
+      id: globalThis.window && globalThis.top !== globalThis.window
+        ? '15330811804122954195'
+        : globalThis.window && globalThis.top
+          ? '9051199845057887056'
+          : null,
+      type: globalThis.window
+        ? 'window'
+        : 'worker',
+      frameType:
+        globalThis.window && globalThis.top !== globalThis.window
+        ? 'nested'
+        : globalThis.window && globalThis.top
+          ? 'top-level'
+          : 'none'
+    }
+  },
+  config: {
+    configurable: false,
+    enumerable: true,
+    writable: false,
+    value: {}
+  },
+  debug: {
+    value: Boolean(1),
+    enumerable: true
+  },
+  headless: {
+    value: Boolean(0),
+    enumerable: true
+  },
+  env: {
+    value: Object.fromEntries(new URLSearchParams(env)),
+    enumerable: true
+  },
+  index: {
+    value: Number('0'),
+    enumerable: true
+  }
+});
+
+  Object.defineProperty(
+    globalThis,
+    'APPLICATION_URL_EVENT_BACKLOG',
+    { enumerable: false, configurable: false, value: [] }
+  );
+
+  globalThis.addEventListener('applicationurl', (e) => {
+    if (document.readyState !== 'complete') {
+      APPLICATION_URL_EVENT_BACKLOG.push(e);
+    }
+  });
+
+  globalThis.addEventListener('__runtime_init__', () => {
+    if (Array.isArray(APPLICATION_URL_EVENT_BACKLOG)) {
+      for (const event of APPLICATION_URL_EVENT_BACKLOG) {
+        globalThis.dispatchEvent(
+          new ApplicationURLEvent(event.type, event)
+        );
+      }
+    }
+
+    APPLICATION_URL_EVENT_BACKLOG.splice(
+      0,
+      APPLICATION_URL_EVENT_BACKLOG.length - 1
+    );
+  }, { once: true });
+  globalThis.addEventListener('filedidchange', () => {
+    location.reload()
+  });
+    let key = decodeURIComponent(
+  ;(() => {
+      'android%5Fenable%5Fstandard%5Fndk%5Fbuild'
+    )
+    const k = key.toLowerCase();
+    globalThis.__args.config[k] = false
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'android%5Ficon'
+    )
+    const k = key.toLowerCase();
+    const value = 'src%2Ficon%2Epng'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'android%5Ficon%5Fsizes'
+    )
+    const k = key.toLowerCase();
+    const value = '512%401x'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'build%5Fcopy'
+    )
+    const k = key.toLowerCase();
+    const value = '%2Eoutput%2Fpublic'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'build%5Fenv'
+    )
+    const k = key.toLowerCase();
+    const value = 'USER%2C%20TMPDIR%2C%20PWD'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'build%5Fflags'
+    )
+    const k = key.toLowerCase();
+    const value = '%2DO3'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'build%5Fheadless'
+    )
+    const k = key.toLowerCase();
+    globalThis.__args.config[k] = false
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'build%5Fname'
+    )
+    const k = key.toLowerCase();
+    const value = 'nitro%2Dapp'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'build%5Foutput'
+    )
+    const k = key.toLowerCase();
+    const value = 'build'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'build%5Fscript'
+    )
+    const k = key.toLowerCase();
+    const value = 'bun%20run%20build'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'build%5Fscript%5Fforward%5Farguments'
+    )
+    const k = key.toLowerCase();
+    globalThis.__args.config[k] = false
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'build%5Fwatch%5Fsources'
+    )
+    const k = key.toLowerCase();
+    const value = 'src'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'debug%5Fflags'
+    )
+    const k = key.toLowerCase();
+    const value = '%2Dg'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'ios%5Fdistribution%5Fmethod'
+    )
+    const k = key.toLowerCase();
+    const value = 'ad%2Dhoc'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'ios%5Ficon'
+    )
+    const k = key.toLowerCase();
+    const value = 'src%2Ficon%2Epng'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'ios%5Ficon%5Fsizes'
+    )
+    const k = key.toLowerCase();
+    const value = '29%401x%2029%402x%2029%403x%2040%402x%2040%403x%2057%401x%2057%402x%2060%402x%2060%403x'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'ios%5Fsimulator%5Fdevice'
+    )
+    const k = key.toLowerCase();
+    const value = 'iPhone%2014'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'linux%5Fcategories'
+    )
+    const k = key.toLowerCase();
+    const value = 'Developer%20Tools'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'linux%5Ficon'
+    )
+    const k = key.toLowerCase();
+    const value = 'src%2Ficon%2Epng'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'linux%5Ficon%5Fsizes'
+    )
+    const k = key.toLowerCase();
+    const value = '512%401x'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'mac%5Ficon'
+    )
+    const k = key.toLowerCase();
+    const value = 'src%2Ficon%2Epng'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'mac%5Ficon%5Fsizes'
+    )
+    const k = key.toLowerCase();
+    const value = '16%401x%2032%401x%20128%401x'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'meta%5Fapplication%5Fprotocol'
+    )
+    const k = key.toLowerCase();
+    const value = 'nitro%2Dapp'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'meta%5Fbundle%5Fidentifier'
+    )
+    const k = key.toLowerCase();
+    const value = 'com%2Enitro%2Dapp'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'meta%5Ffile%5Flimit'
+    )
+    const k = key.toLowerCase();
+    const value = '1024'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'meta%5Flang'
+    )
+    const k = key.toLowerCase();
+    const value = 'en%2Dus'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'meta%5Ftitle'
+    )
+    const k = key.toLowerCase();
+    const value = 'nitro%2Dapp'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'meta%5Fversion'
+    )
+    const k = key.toLowerCase();
+    const value = '1%2E0%2E0'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'native%5Ffiles'
+    )
+    const k = key.toLowerCase();
+    const value = 'native%2Dmodule1%2Ecc%20native%2Dmodule2%2Ecc'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'native%5Fheaders'
+    )
+    const k = key.toLowerCase();
+    const value = 'native%2Dmodule1%2Ehh'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'webview%5Froot'
+    )
+    const k = key.toLowerCase();
+    const value = '%2F'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'webview%5Fservice%2Dworkers%5F%2Fnitro%2F'
+    )
+    const k = key.toLowerCase();
+    const value = '%2Fserver%2Findex%2Emjs'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'webview%5Fwatch'
+    )
+    const k = key.toLowerCase();
+    globalThis.__args.config[k] = true
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'webview%5Fwatch%5Freload'
+    )
+    const k = key.toLowerCase();
+    globalThis.__args.config[k] = true
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'webview%5Fwatch%5Fservice%5Fworker%5Freload%5Ftimeout'
+    )
+    const k = key.toLowerCase();
+    const value = '500'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'win%5Ficon'
+    )
+    const k = key.toLowerCase();
+    const value = 'src%2Ficon%2Eico'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'win%5Ficon%5Fsizes'
+    )
+    const k = key.toLowerCase();
+    const value = '512%401x'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'win%5Flogo'
+    )
+    const k = key.toLowerCase();
+    const value = 'icon%2Eico'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'window%5Fheight'
+    )
+    const k = key.toLowerCase();
+    const value = '50%25'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  ;(() => {
+    let key = decodeURIComponent(
+      'window%5Fwidth'
+    )
+    const k = key.toLowerCase();
+    const value = '50%25'
+    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+      globalThis.__args.config[k] = parseFloat(value) ;
+    } else {
+      let val = decodeURIComponent(value);
+      try { val = JSON.parse(val) } catch (err) {}
+      globalThis.__args.config[k] = val;
+    }
+  })();
+  Object.freeze(globalThis.__args.client);
+  Object.freeze(globalThis.__args.config);
+  Object.freeze(globalThis.__args.argv);
+  Object.freeze(globalThis.__args.env);
+
+  const { addEventListener } = globalThis;
+  globalThis.addEventListener = function (eventName, ...args) {
+    eventName = eventName.replace('load', '__runtime_init__');
+    return addEventListener.call(this, eventName, ...args);
+  };
+
+  try {
+    const event = '__runtime_init__';
+    let onload = null
+    Object.defineProperty(globalThis, 'onload', {
+      get: () => onload,
+      set (value) {
+        const opts = { once: true };
+        if (onload) {
+          globalThis.removeEventListener(event, onload, opts);
+          onload = null;
+        }
+
+        if (typeof value === 'function') {
+          onload = value;
+          globalThis.addEventListener(event, onload, opts, {
+            once: true
+          });
+        }
+      }
+    });
+  } catch {}
+})();
+</script>
+<script type="module">
+import 'socket:internal/init'
+</script>
+<script>
+;(async function preloadCommonJSScope () {
+  const href = encodeURIComponent(globalThis.location.href);
+  const source = `socket:module?ref=${href}`;
+
+  const { Module } = await import(source);
+  const process = await import('socket:process');
+  const path = await import('socket:path');
+  const require = Module.createRequire(globalThis.location.href);
+  const __filename = Module.main.filename;
+  const __dirname = path.dirname(__filename);
+
+  Object.defineProperties(globalThis, {
+    require: {
+      configurable: true,
+      enumerable: false,
+      writable: false,
+      value: require,
+    },
+    module: {
+      configurable: true,
+      enumerable: false,
+      writable: false,
+      value: Module.main.scope,
+    },
+    process: {
+      configurable: true,
+      enumerable: false,
+      get: () => process.default,
+    },
+    __dirname: {
+      configurable: true,
+      enumerable: false,
+      writable: false,
+      value: __dirname,
+    },
+    __filename: {
+      configurable: true,
+      enumerable: false,
+      writable: false,
+      value: require,
+    }
+  });
+
+  globalThis.addEventListener('popstate', preloadCommonJSScope);
+})();
+</script>
+<meta name="end-runtime-preload">
+hello world!
