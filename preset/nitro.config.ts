@@ -10,23 +10,12 @@ const htmlTemplate = (baseURL = "/") => `<!DOCTYPE html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="
-        connect-src socket: https: http: blob: ipc: wss: ws: ws://localhost:*;
-         script-src socket: https: http: blob: http://localhost:* 'unsafe-eval' 'unsafe-inline';
-         worker-src socket: https: http: blob: 'unsafe-eval' 'unsafe-inline';
-          frame-src socket: https: http: blob: http://localhost:*;
-            img-src socket: https: http: blob: http://localhost:*;
-          child-src socket: https: http: blob:;
-         object-src 'none';
-      "
-    >
   <script type="module">
+  import fetcher from 'socket:fetch';
     setInterval(async() => {
-     const reg =  await navigator.serviceWorker.getRegistrations();
-     const fetched = await fetch('/dogs');
-     console.log(reg);
+    //  const reg =  await navigator.serviceWorker.getRegistrations();
+     const fetched = await fetcher('/nitro/hello');
+    //  console.log(reg);
      if(fetched.ok){
        const response = await fetched.text();
        console.log(response);
@@ -51,6 +40,9 @@ export default <NitroPreset>{
   // replace:{
   //   "node:*": "socket:*"
   // },
+  // unenv:{
+  //   ''
+  // }
   node: false,
   noExternals: true,
   exportConditions: ["socket"],
@@ -66,7 +58,7 @@ export default <NitroPreset>{
   //     'platform': 'browser',
   //   }
   // },
-  externals:[/^socket:.*/, ],
+  externals:[/^socket:.*/],
   rollupConfig: {
     external: [/^socket:.*/],
     'output':{
@@ -79,10 +71,10 @@ export default <NitroPreset>{
     // 'preserveEntrySignatures': 'strict',
     // 'shimMissingExports': true,
   },
-  wasm: {
-    esmImport: true,
-    lazy: false,
-  },
+  // wasm: {
+  //   esmImport: true,
+  //   lazy: false,
+  // },
   hooks: {
     "prerender:generate"(route, nitro) {
       console.log("prerender:generate", route);

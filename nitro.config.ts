@@ -2,5 +2,6 @@
 export default defineNitroConfig({
   srcDir: "server",
   preset: './preset',
-  // baseURL: '/nitro'
+  baseURL: '/nitro',
+ 
 });

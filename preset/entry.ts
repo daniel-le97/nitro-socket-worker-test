@@ -4,15 +4,17 @@ import type { Context } from "socket:service-worker";
 import { isPublicAssetURL } from "#internal/nitro/virtual/public-assets";
 
 import { nitroApp } from "nitropack/runtime/app";
-import * as os from "socket:os";
+// import fetcher from "socket:fetch";
+import os from "socket:os";
+// import * as ok from "socket:process";
 // @ts-ignore
 // export  { isPublicAssetURL } from "#internal/nitro/virtual/public-assets";
 
 // export const nitroApp = useNitroApp();
-
+// globalThis.process = ok
 export default {
   async fetch(request: Request, env = {}, ctx: Context) {
-    ctx.data = "hello from service worker";
+    ctx.data = os.uptime();
     const url = new URL(request.url);
     // const req = new Request(request)
     // const res = {
@@ -29,6 +31,8 @@ export default {
 
     let res = await handleEvent(url, request);
     console.log({res, url, env,ctx});
+    // console.log(await res.text());
+    
     return res
     // const platform = os.platform();
     // return new Response(nitroApp.h3App.options.debug + " " + platform);
@@ -42,12 +46,25 @@ async function handleEvent(url: URL, request: Request) {
     body = await request.arrayBuffer();
   }
 
+//  const res = await nitroApp.localCall({
+//     url: url.pathname + url.search,
+//     'headers': request.headers,
+//     method: request.method,
+//     'body': body,
+//     'protocol': url.protocol,
+//   })
+
+//   return new Response(res.body, {
+//     'headers': res.headers,
+//     'status': res.status,
+//     'statusText': res.statusText
+//   })
   return await nitroApp.localFetch(url.pathname + url.search, {
     host: url.hostname,
     protocol: url.protocol,
     headers: request.headers,
     method: request.method,
-    redirect: 'follow',
+    redirect: 'manual',
     body,
   });
 }
