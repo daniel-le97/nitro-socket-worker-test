@@ -31,10 +31,11 @@ const htmlTemplate = (baseURL = "/") => `<!DOCTYPE html>
 </html>`;
 
 export default <NitroPreset>{
+  baseURL: '/nitro',
   // replace: {
   //   "globalThis": "self"
   // },
-  minify: false,
+  minify: true,
   extends: "service-worker",
   // replace:{
   //   "node:*": "socket:*"
@@ -101,22 +102,22 @@ export default <NitroPreset>{
             "const process = _global.process || process$1;"
           );
       }
-      // if (nitro.options.minify) {
-      //   changedContents = changedContents
-      //     .replace("Oe.process=Oe.process||Be", "")
-      //     .replace("const Ce=Oe.process", "const Ce=Oe.process||Be");
-      // }
+      if (nitro.options.minify) {
+        changedContents = changedContents
+          .replace("Oe.process=Oe.process||Be;", "")
+          .replace("const Ce=Oe.process", "const Ce=Oe.process||Be");
+      }
 
       await fsp.writeFile(entry, changedContents, "utf8");
 
-      await fsp.writeFile(
-        resolve(nitro.options.output.publicDir, "sw.js"),
-        `self.importScripts('${joinURL(
-          nitro.options.baseURL,
-          "server/index.mjs"
-        )}');`,
-        "utf8"
-      );
+    //   await fsp.writeFile(
+    //     resolve(nitro.options.output.publicDir, "sw.js"),
+    //     `self.importScripts('${joinURL(
+    //       nitro.options.baseURL,
+    //       "server/index.mjs"
+    //     )}');`,
+    //     "utf8"
+    //   );
 
       // Write fallback initializer files
       const html = htmlTemplate(nitro.options.baseURL);
