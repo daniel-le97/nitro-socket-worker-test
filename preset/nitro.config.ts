@@ -3,7 +3,7 @@ import { resolve } from "pathe";
 import { joinURL } from "ufo";
 import type { Nitro } from "nitropack";
 import type { NitroPreset } from "nitropack";
-console.log('using nitro preset');
+console.log("using nitro preset");
 
 const htmlTemplate = (baseURL = "/") => `<!DOCTYPE html>
 <html>
@@ -11,15 +11,14 @@ const htmlTemplate = (baseURL = "/") => `<!DOCTYPE html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <script type="module">
-  import fetcher from 'socket:fetch';
     setInterval(async() => {
     //  const reg =  await navigator.serviceWorker.getRegistrations();
-     const fetched = await fetcher('/nitro/hello');
+     const fetched = await fetch('${baseURL}');
     //  console.log(reg);
      if(fetched.ok){
        const response = await fetched.text();
        console.log(response);
-       document.getElementById('app').innerText = response;
+       document.getElementById('app').innerHTMl = response;
      }
     }, 2500)
   </script>
@@ -43,6 +42,7 @@ export default <NitroPreset>{
   // unenv:{
   //   ''
   // }
+  // static:true,
   node: false,
   noExternals: true,
   exportConditions: ["socket"],
@@ -58,19 +58,20 @@ export default <NitroPreset>{
   //     'platform': 'browser',
   //   }
   // },
-  externals:[/^socket:.*/],
+  externals: [/^socket:.*/],
   rollupConfig: {
-    external: [/^socket:.*/],
-    'output':{
-      'format': 'es'
-      // 'globals':{
-      //   'socket:os': 'socket:os',
+    output: {
+      format: "es",
+      // name: "nitro",
 
-      // }
-    }
-    // 'preserveEntrySignatures': 'strict',
-    // 'shimMissingExports': true,
+      // 'preserveModules': true,
+      // generatedCode: {
+      //   symbols: true,
+      // },
+    },
+    external: [/^socket:.*/],
   },
+  // inlineDynamicImports: true,
   // wasm: {
   //   esmImport: true,
   //   lazy: false,
@@ -85,12 +86,28 @@ export default <NitroPreset>{
       // );
     },
     async compiled(nitro: Nitro) {
-      const dir = nitro.options.output.serverDir
-      const fileContents = (await fsp.readFile(dir + "/index.mjs", "utf8"))
-      let changedContents = `globalThis =  globalThis || self || global || {};` + fileContents
-      changedContents = changedContents.replace('_global.process = _global.process || process$1;', '').replace('const process = _global.process;', 'const process = _global.process || process$1;')
+      const dir = nitro.options.output.serverDir;
+      const entry = dir + "/index.mjs";
+      const fileContents = await fsp.readFile(entry, "utf8");
 
-      await fsp.writeFile(dir + "/index.mjs", changedContents, "utf8");
+      let changedContents =
+        `globalThis = globalThis || self || global || {};` + fileContents;
+
+      if (nitro.options.minify !== true) {
+        changedContents = changedContents
+          .replace("_global.process = _global.process || process$1;", "")
+          .replace(
+            "const process = _global.process;",
+            "const process = _global.process || process$1;"
+          );
+      }
+      // if (nitro.options.minify) {
+      //   changedContents = changedContents
+      //     .replace("Oe.process=Oe.process||Be", "")
+      //     .replace("const Ce=Oe.process", "const Ce=Oe.process||Be");
+      // }
+
+      await fsp.writeFile(entry, changedContents, "utf8");
 
       await fsp.writeFile(
         resolve(nitro.options.output.publicDir, "sw.js"),
